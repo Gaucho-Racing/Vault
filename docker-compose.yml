@@ -1,0 +1,42 @@
+name: vault
+
+services:
+  vault:
+    container_name: vault-vault
+    build:
+      context: ./vault
+      dockerfile: Dockerfile.dev
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./vault:/app
+      - vault_gopath:/go
+    ports:
+      - "9994:9994"
+    depends_on:
+      - db
+    environment:
+      ENV: DEV
+      PORT: 9994
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      DATABASE_NAME: vault
+
+  db:
+    container_name: vault-db
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: vault
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+
+volumes:
+  pgdata:
+  vault_gopath:

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gaucho-racing/vault/vault/api"
 	"github.com/gaucho-racing/vault/vault/config"
+	"github.com/gaucho-racing/vault/vault/database"
 	"github.com/gaucho-racing/vault/vault/pkg/logger"
 )
 
@@ -12,6 +13,7 @@ func main() {
 
 	config.Verify()
 	config.PrintStartupBanner()
+	database.Init()
 
 	api.Run()
 }
