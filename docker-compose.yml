@@ -1,6 +1,19 @@
 name: vault
 
 services:
+  kerbecs:
+    container_name: vault-kerbecs
+    image: bk1031/kerbecs:latest
+    restart: always
+    ports:
+      - "10410:10310"
+    volumes:
+      - ./kerbecs.yaml:/etc/kerbecs/kerbecs.yaml:ro
+    environment:
+      KERBECS_CONFIG: /etc/kerbecs/kerbecs.yaml
+    depends_on:
+      - vault
+
   vault:
     container_name: vault-vault
     build:
@@ -11,17 +24,15 @@ services:
     volumes:
       - ./vault:/app
       - vault_gopath:/go
-    ports:
-      - "9994:9994"
     depends_on:
       - db
     environment:
       ENV: DEV
-      PORT: 9994
+      PORT: 9999
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: vault
 
   db:
@@ -30,10 +41,8 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: vault
-    ports:
-      - "127.0.0.1:5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql
 
