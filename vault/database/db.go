@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gaucho-racing/vault/vault/config"
+	"github.com/gaucho-racing/vault/vault/model"
 	"github.com/gaucho-racing/vault/vault/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -30,5 +31,13 @@ func Init() {
 	}
 
 	logger.SugarLogger.Infoln("Connected to database")
+	if err := db.AutoMigrate(
+		&model.Account{},
+		&model.Secret{},
+	); err != nil {
+		logger.SugarLogger.Fatalf("failed to run database migrations: %v", err)
+		return
+	}
+	logger.SugarLogger.Infoln("AutoMigration complete")
 	DB = db
 }
