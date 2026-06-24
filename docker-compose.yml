@@ -6,7 +6,7 @@ services:
     image: bk1031/kerbecs:latest
     restart: always
     ports:
-      - "10410:10310"
+      - "10310:10310"
     volumes:
       - ./kerbecs.yaml:/etc/kerbecs/kerbecs.yaml:ro
     environment:
