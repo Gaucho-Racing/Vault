@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/gaucho-racing/vault/vault/config"
 	"github.com/gaucho-racing/vault/vault/model"
@@ -101,7 +102,11 @@ func hasEncryptedSecretValue(secret model.Secret) bool {
 }
 
 func loadVaultMasterKey() ([]byte, error) {
-	key, err := base64.StdEncoding.DecodeString(config.VaultMasterKey)
+	return decodeVaultMasterKey(config.VaultMasterKey)
+}
+
+func decodeVaultMasterKey(value string) ([]byte, error) {
+	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(value))
 	if err != nil {
 		return nil, fmt.Errorf("%w: must be base64 encoded", ErrVaultMasterKeyInvalid)
 	}
