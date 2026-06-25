@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowUpRight, Clock3, LockKeyhole, Plus, Search, UsersRound } from "lucide-react"
+import { ArrowUpRight, Clock3, Plus, Search, UsersRound } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -58,26 +58,14 @@ export default function AccountsPage() {
         }
       />
 
-      <div className="mb-6 grid gap-3 lg:grid-cols-[1fr_260px_260px]">
-        <div className="flex h-11 min-w-0 items-center gap-2 rounded-lg bg-card px-3 shadow-sm shadow-black/[0.03] dark:shadow-black/20">
-          <Search className="size-4 shrink-0 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search accounts"
-            className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-          />
-        </div>
-        <div className="flex h-11 items-center gap-3 rounded-lg bg-card px-3 text-sm shadow-sm shadow-black/[0.03] dark:shadow-black/20">
-          <LockKeyhole className="size-4 text-primary" />
-          <span className="text-muted-foreground">Accounts</span>
-          <span className="ml-auto font-medium">{accounts.length}</span>
-        </div>
-        <div className="flex h-11 items-center gap-3 rounded-lg bg-card px-3 text-sm shadow-sm shadow-black/[0.03] dark:shadow-black/20">
-          <UsersRound className="size-4 text-primary" />
-          <span className="text-muted-foreground">Visible results</span>
-          <span className="ml-auto font-medium">{filteredAccounts.length}</span>
-        </div>
+      <div className="mb-6 flex h-11 max-w-xl min-w-0 items-center gap-2 rounded-lg bg-card px-3 shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+        <Search className="size-4 shrink-0 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search accounts"
+          className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        />
       </div>
 
       {accountsQuery.isLoading ? (
