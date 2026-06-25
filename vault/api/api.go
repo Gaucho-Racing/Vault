@@ -41,36 +41,24 @@ func InitializeRouter() *gin.Engine {
 }
 
 func InitializeRoutes(router *gin.Engine) {
-	router.GET("/vault/ping", Ping)
+	router.GET("/ping", Ping)
 
-	router.GET("/vault/accounts", ListAccounts)
-	router.POST("/vault/accounts", CreateAccount)
-	router.GET("/vault/accounts/:id", GetAccount)
-	router.PUT("/vault/accounts/:id", UpdateAccount)
-	router.DELETE("/vault/accounts/:id", ArchiveAccount)
+	router.GET("/accounts", ListAccounts)
+	router.POST("/accounts", CreateAccount)
+	router.GET("/accounts/:id", GetAccount)
+	router.PUT("/accounts/:id", UpdateAccount)
+	router.DELETE("/accounts/:id", ArchiveAccount)
 
-	router.GET("/vault/accounts/:id/secrets", ListSecrets)
-	router.POST("/vault/accounts/:id/secrets", CreateSecret)
-	router.GET("/vault/accounts/:id/secrets/:secretID", GetSecret)
-	router.PUT("/vault/accounts/:id/secrets/:secretID", UpdateSecret)
-	router.DELETE("/vault/accounts/:id/secrets/:secretID", ArchiveSecret)
-	router.POST("/vault/accounts/:id/secrets/:secretID/reveal", RevealSecret)
+	router.GET("/accounts/:id/secrets", ListSecrets)
+	router.POST("/accounts/:id/secrets", CreateSecret)
+	router.GET("/accounts/:id/secrets/:secretID", GetSecret)
+	router.PUT("/accounts/:id/secrets/:secretID", UpdateSecret)
+	router.DELETE("/accounts/:id/secrets/:secretID", ArchiveSecret)
+	router.POST("/accounts/:id/secrets/:secretID/reveal", RevealSecret)
 }
 
 func AuthChecker() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if config.SkipAuthCheck {
-			setAuthContext(c, "mock-token", map[string]interface{}{
-				"sub":     "mock-entity",
-				"aud":     []interface{}{"mock-audience"},
-				"scope":   "sentinel:all groups:read",
-				"user_id": "mock-user",
-				"groups":  []interface{}{"Admins"},
-			})
-			c.Next()
-			return
-		}
-
 		authHeader := c.GetHeader("Authorization")
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			token := strings.TrimPrefix(authHeader, "Bearer ")

@@ -22,7 +22,6 @@ var SentinelURL = os.Getenv("SENTINEL_URL")
 var SentinelClientID = os.Getenv("SENTINEL_CLIENT_ID")
 var SentinelClientSecret = os.Getenv("SENTINEL_CLIENT_SECRET")
 var SentinelSAToken = os.Getenv("SENTINEL_SA_TOKEN")
-var SkipAuthCheck = os.Getenv("SKIP_AUTH_CHECK") == "true"
 
 var VaultMasterKey = os.Getenv("VAULT_MASTER_KEY")
 var VaultMasterKeyID = os.Getenv("VAULT_MASTER_KEY_ID")

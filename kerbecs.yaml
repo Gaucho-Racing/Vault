@@ -36,7 +36,7 @@ upstreams:
 routes:
   - name: vault
     match:
-      path: /api/vault/*
+      path: /api/*
     upstream: vault
     rewrite:
       strip_prefix: /api

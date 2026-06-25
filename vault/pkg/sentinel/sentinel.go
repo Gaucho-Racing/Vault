@@ -20,16 +20,6 @@ type Error struct {
 var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 func ValidateToken(token string) (map[string]interface{}, error) {
-	if config.SkipAuthCheck {
-		return map[string]interface{}{
-			"sub":       "mock-entity",
-			"aud":       []interface{}{"mock-audience"},
-			"scope":     "sentinel:all groups:read",
-			"user_id":   "mock-user",
-			"groups":    []interface{}{"Admins"},
-			"group_ids": []interface{}{},
-		}, nil
-	}
 	if strings.TrimSpace(config.SentinelURL) == "" {
 		return nil, fmt.Errorf("SENTINEL_URL is not configured")
 	}
