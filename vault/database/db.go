@@ -34,6 +34,7 @@ func Init() {
 	if err := db.AutoMigrate(
 		&model.Account{},
 		&model.Secret{},
+		&model.VaultKey{},
 	); err != nil {
 		logger.SugarLogger.Fatalf("failed to run database migrations: %v", err)
 		return

@@ -31,4 +31,7 @@ func Verify() {
 		DatabaseName = "vault"
 		logger.SugarLogger.Infof("DATABASE_NAME is not set, defaulting to %s", DatabaseName)
 	}
+	if SentinelURL == "" {
+		logger.SugarLogger.Fatal("SENTINEL_URL is required")
+	}
 }

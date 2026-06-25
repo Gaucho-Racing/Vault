@@ -18,6 +18,14 @@ var DatabaseUser = os.Getenv("DATABASE_USER")
 var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
 var DatabaseName = os.Getenv("DATABASE_NAME")
 
+var SentinelURL = os.Getenv("SENTINEL_URL")
+var SentinelClientID = os.Getenv("SENTINEL_CLIENT_ID")
+var SentinelClientSecret = os.Getenv("SENTINEL_CLIENT_SECRET")
+var SentinelSAToken = os.Getenv("SENTINEL_SA_TOKEN")
+
+var VaultMasterKey = os.Getenv("VAULT_MASTER_KEY")
+var VaultMasterKeyID = os.Getenv("VAULT_MASTER_KEY_ID")
+
 func IsProduction() bool {
 	return Env == "PROD"
 }

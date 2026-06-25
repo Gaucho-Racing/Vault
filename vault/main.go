@@ -5,6 +5,7 @@ import (
 	"github.com/gaucho-racing/vault/vault/config"
 	"github.com/gaucho-racing/vault/vault/database"
 	"github.com/gaucho-racing/vault/vault/pkg/logger"
+	"github.com/gaucho-racing/vault/vault/service"
 )
 
 func main() {
@@ -14,6 +15,7 @@ func main() {
 	config.Verify()
 	config.PrintStartupBanner()
 	database.Init()
+	service.InitializeVaultKeys()
 
 	api.Run()
 }
