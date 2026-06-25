@@ -33,11 +33,23 @@ upstreams:
     instances:
       - http://vault:9999
 
+  web:
+    name: vault-web
+    version: 0.1.0
+    instances:
+      - http://web:5173
+
 routes:
-  - name: vault
+  - name: vault-api
     match:
       path: /api/*
     upstream: vault
     rewrite:
       strip_prefix: /api
+    envelope: passthrough
+
+  - name: vault-web
+    match:
+      path: /*
+    upstream: web
     envelope: passthrough
