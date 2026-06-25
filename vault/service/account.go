@@ -20,7 +20,7 @@ type AccountWithSecrets struct {
 func GetAllAccounts() ([]model.Account, error) {
 	accounts := []model.Account{}
 	if err := database.DB.
-		Where("archived_at IS NULL").
+		Where("deleted_at IS NULL").
 		Order("name ASC").
 		Find(&accounts).Error; err != nil {
 		return []model.Account{}, err
@@ -30,7 +30,7 @@ func GetAllAccounts() ([]model.Account, error) {
 
 func GetAccountByID(id string) (model.Account, error) {
 	var account model.Account
-	if err := database.DB.Where("id = ? AND archived_at IS NULL", id).First(&account).Error; err != nil {
+	if err := database.DB.Where("id = ? AND deleted_at IS NULL", id).First(&account).Error; err != nil {
 		return model.Account{}, err
 	}
 	return account, nil
@@ -73,13 +73,13 @@ func UpdateAccount(account model.Account) (model.Account, error) {
 	return account, nil
 }
 
-func ArchiveAccount(id string, entityID string) error {
+func DeleteAccount(id string, entityID string) error {
 	now := time.Now()
 	return database.DB.
 		Model(&model.Account{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{
-			"archived_at":          &now,
+			"deleted_at":           &now,
 			"updated_by_entity_id": entityID,
 		}).Error
 }

@@ -8,7 +8,7 @@ export type Account = {
   access_group_names: string[]
   created_by_entity_id: string
   updated_by_entity_id: string
-  archived_at: string | null
+  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -25,7 +25,7 @@ export type Secret = {
   algorithm: string
   created_by_entity_id: string
   updated_by_entity_id: string
-  archived_at: string | null
+  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -100,7 +100,7 @@ export async function updateAccount(id: string, input: AccountInput) {
   return response.data
 }
 
-export async function archiveAccount(id: string) {
+export async function deleteAccount(id: string) {
   await api.delete(`/accounts/${id}`)
 }
 
@@ -109,7 +109,7 @@ export async function createSecret(accountID: string, input: SecretInput) {
   return response.data
 }
 
-export async function archiveSecret(accountID: string, secretID: string) {
+export async function deleteSecret(accountID: string, secretID: string) {
   await api.delete(`/accounts/${accountID}/secrets/${secretID}`)
 }
 

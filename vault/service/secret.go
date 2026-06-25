@@ -16,7 +16,7 @@ var ErrSecretKeyRequired = errors.New("secret key is required")
 func GetSecretsForAccount(accountID string) ([]model.Secret, error) {
 	secrets := []model.Secret{}
 	if err := database.DB.
-		Where("account_id = ? AND archived_at IS NULL", accountID).
+		Where("account_id = ? AND deleted_at IS NULL", accountID).
 		Order("key ASC").
 		Find(&secrets).Error; err != nil {
 		return []model.Secret{}, err
@@ -26,7 +26,7 @@ func GetSecretsForAccount(accountID string) ([]model.Secret, error) {
 
 func GetSecretByID(id string) (model.Secret, error) {
 	var secret model.Secret
-	if err := database.DB.Where("id = ? AND archived_at IS NULL", id).First(&secret).Error; err != nil {
+	if err := database.DB.Where("id = ? AND deleted_at IS NULL", id).First(&secret).Error; err != nil {
 		return model.Secret{}, err
 	}
 	return secret, nil
@@ -34,7 +34,7 @@ func GetSecretByID(id string) (model.Secret, error) {
 
 func GetSecretForAccount(accountID string, secretID string) (model.Secret, error) {
 	var secret model.Secret
-	if err := database.DB.Where("id = ? AND account_id = ? AND archived_at IS NULL", secretID, accountID).First(&secret).Error; err != nil {
+	if err := database.DB.Where("id = ? AND account_id = ? AND deleted_at IS NULL", secretID, accountID).First(&secret).Error; err != nil {
 		return model.Secret{}, err
 	}
 	return secret, nil
@@ -69,13 +69,13 @@ func UpdateSecret(secret model.Secret) (model.Secret, error) {
 	return secret, nil
 }
 
-func ArchiveSecret(accountID string, secretID string, entityID string) error {
+func DeleteSecret(accountID string, secretID string, entityID string) error {
 	now := time.Now()
 	result := database.DB.
 		Model(&model.Secret{}).
 		Where("id = ? AND account_id = ?", secretID, accountID).
 		Updates(map[string]interface{}{
-			"archived_at":          &now,
+			"deleted_at":           &now,
 			"updated_by_entity_id": entityID,
 		})
 	if result.Error != nil {

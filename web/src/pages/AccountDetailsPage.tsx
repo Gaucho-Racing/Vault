@@ -16,6 +16,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { AccountFormDialog } from "@/components/AccountFormDialog"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { PageContainer } from "@/components/PageContainer"
 import { SecretFormDialog } from "@/components/SecretFormDialog"
 import { Badge } from "@/components/ui/badge"
@@ -23,9 +24,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  archiveAccount,
-  archiveSecret,
   createSecret,
+  deleteAccount,
+  deleteSecret,
   getAccount,
   revealSecret,
   updateAccount,
@@ -163,23 +164,23 @@ export default function AccountDetailsPage() {
     onError: (error) => toast.error(errorMessage(error, "Failed to update account")),
   })
 
-  const archiveAccountMutation = useMutation({
-    mutationFn: () => archiveAccount(id ?? ""),
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => deleteAccount(id ?? ""),
     onSuccess: () => {
-      toast.success("Account archived")
+      toast.success("Account deleted")
       void queryClient.invalidateQueries({ queryKey: ["accounts"] })
       navigate("/accounts", { replace: true })
     },
-    onError: (error) => toast.error(errorMessage(error, "Failed to archive account")),
+    onError: (error) => toast.error(errorMessage(error, "Failed to delete account")),
   })
 
-  const archiveSecretMutation = useMutation({
-    mutationFn: (secretID: string) => archiveSecret(id ?? "", secretID),
+  const deleteSecretMutation = useMutation({
+    mutationFn: (secretID: string) => deleteSecret(id ?? "", secretID),
     onSuccess: () => {
-      toast.success("Secret archived")
+      toast.success("Secret deleted")
       void queryClient.invalidateQueries({ queryKey: ["account", id] })
     },
-    onError: (error) => toast.error(errorMessage(error, "Failed to archive secret")),
+    onError: (error) => toast.error(errorMessage(error, "Failed to delete secret")),
   })
 
   const revealMutation = useMutation({
@@ -257,14 +258,19 @@ export default function AccountDetailsPage() {
               onSubmit={handleUpdate}
               trigger={<Button variant="outline">Edit</Button>}
             />
-            <Button
-              variant="destructive"
-              disabled={archiveAccountMutation.isPending}
-              onClick={() => archiveAccountMutation.mutate()}
-            >
-              <Trash2 className="size-4" />
-              Archive
-            </Button>
+            <ConfirmDialog
+              title="Delete account"
+              description="This will delete the account and its secrets from Vault."
+              confirmLabel="Delete account"
+              isPending={deleteAccountMutation.isPending}
+              onConfirm={() => deleteAccountMutation.mutateAsync()}
+              trigger={
+                <Button variant="destructive" disabled={deleteAccountMutation.isPending}>
+                  <Trash2 className="size-4" />
+                  Delete
+                </Button>
+              }
+            />
           </div>
         </div>
 
@@ -389,15 +395,23 @@ export default function AccountDetailsPage() {
                       })
                     }
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    disabled={archiveSecretMutation.isPending}
-                    onClick={() => archiveSecretMutation.mutate(secret.id)}
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span className="sr-only">Archive secret</span>
-                  </Button>
+                  <ConfirmDialog
+                    title="Delete secret"
+                    description="This will delete this secret from the account."
+                    confirmLabel="Delete secret"
+                    isPending={deleteSecretMutation.isPending}
+                    onConfirm={() => deleteSecretMutation.mutateAsync(secret.id)}
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={deleteSecretMutation.isPending}
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span className="sr-only">Delete secret</span>
+                      </Button>
+                    }
+                  />
                 </div>
               ))}
             </div>

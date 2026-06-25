@@ -114,7 +114,7 @@ func UpdateAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
-func ArchiveAccount(c *gin.Context) {
+func DeleteAccount(c *gin.Context) {
 	Require(c, RequestTokenExists(c))
 	id := c.Param("id")
 	account, err := service.GetAccountByID(id)
@@ -127,9 +127,9 @@ func ArchiveAccount(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account))
-	if err := service.ArchiveAccount(id, GetRequestEntityID(c)); err != nil {
+	if err := service.DeleteAccount(id, GetRequestEntityID(c)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "account archived"})
+	c.JSON(http.StatusOK, gin.H{"message": "account deleted"})
 }

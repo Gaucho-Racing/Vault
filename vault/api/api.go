@@ -54,13 +54,13 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/accounts", CreateAccount)
 	router.GET("/accounts/:id", GetAccount)
 	router.PUT("/accounts/:id", UpdateAccount)
-	router.DELETE("/accounts/:id", ArchiveAccount)
+	router.DELETE("/accounts/:id", DeleteAccount)
 
 	router.GET("/accounts/:id/secrets", ListSecrets)
 	router.POST("/accounts/:id/secrets", CreateSecret)
 	router.GET("/accounts/:id/secrets/:secretID", GetSecret)
 	router.PUT("/accounts/:id/secrets/:secretID", UpdateSecret)
-	router.DELETE("/accounts/:id/secrets/:secretID", ArchiveSecret)
+	router.DELETE("/accounts/:id/secrets/:secretID", DeleteSecret)
 	router.POST("/accounts/:id/secrets/:secretID/reveal", RevealSecret)
 }
 
