@@ -11,8 +11,17 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { commonSecretTypes, type SecretInput } from "@/lib/vault"
+
+const CUSTOM_SECRET_TYPE = "__custom__"
 
 export function SecretFormDialog({
   trigger,
@@ -27,8 +36,10 @@ export function SecretFormDialog({
   const [key, setKey] = useState("")
   const [label, setLabel] = useState("")
   const [type, setType] = useState("")
+  const [isCustomType, setIsCustomType] = useState(false)
   const [plainValue, setPlainValue] = useState("")
   const [sensitive, setSensitive] = useState(true)
+  const selectedType = commonSecretTypes.includes(type) ? type : isCustomType ? CUSTOM_SECRET_TYPE : undefined
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -43,6 +54,7 @@ export function SecretFormDialog({
     setKey("")
     setLabel("")
     setType("")
+    setIsCustomType(false)
     setPlainValue("")
     setSensitive(true)
   }
@@ -69,18 +81,38 @@ export function SecretFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="secret-type">Type</Label>
-              <Input
-                id="secret-type"
-                list="secret-types"
-                value={type}
-                onChange={(event) => setType(event.target.value)}
-                placeholder="password"
-              />
-              <datalist id="secret-types">
-                {commonSecretTypes.map((secretType) => (
-                  <option key={secretType} value={secretType} />
-                ))}
-              </datalist>
+              <Select
+                value={selectedType}
+                onValueChange={(value) => {
+                  if (value === CUSTOM_SECRET_TYPE) {
+                    setType("")
+                    setIsCustomType(true)
+                    return
+                  }
+                  setType(value)
+                  setIsCustomType(false)
+                }}
+              >
+                <SelectTrigger id="secret-type" className="h-9 w-full bg-background">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
+                  {commonSecretTypes.map((secretType) => (
+                    <SelectItem key={secretType} value={secretType}>
+                      {secretType}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM_SECRET_TYPE}>Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              {isCustomType && (
+                <Input
+                  value={type}
+                  onChange={(event) => setType(event.target.value)}
+                  placeholder="custom_type"
+                  autoFocus
+                />
+              )}
             </div>
           </div>
 
