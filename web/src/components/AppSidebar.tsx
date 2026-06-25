@@ -1,9 +1,12 @@
-import { KeyRound, LockKeyhole } from "lucide-react"
+import { KeyRound, LockKeyhole, Settings } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
 
-const navItems = [{ to: "/accounts", label: "Accounts", icon: LockKeyhole }]
+const navItems = [
+  { to: "/accounts", label: "Accounts", icon: LockKeyhole },
+  { to: "/settings", label: "Settings", icon: Settings },
+]
 
 function isActive(currentPath: string, target: string) {
   return currentPath === target || currentPath.startsWith(`${target}/`)
@@ -18,10 +21,7 @@ export function AppSidebar() {
         <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/25">
           <KeyRound className="size-5" />
         </div>
-        <div className="min-w-0">
-          <div className="text-base font-semibold leading-none">Vault</div>
-          <div className="mt-1 text-xs text-muted-foreground">Gaucho Racing</div>
-        </div>
+        <div className="min-w-0 text-base font-semibold leading-none">Vault</div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {

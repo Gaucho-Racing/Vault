@@ -6,6 +6,7 @@ import AccountDetailsPage from "@/pages/AccountDetailsPage"
 import AccountsPage from "@/pages/AccountsPage"
 import LoginPage from "@/pages/LoginPage"
 import NotFoundPage from "@/pages/NotFoundPage"
+import SettingsPage from "@/pages/SettingsPage"
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
           { path: "/", element: <Navigate to="/accounts" replace /> },
           { path: "/accounts", element: <AccountsPage /> },
           { path: "/accounts/:id", element: <AccountDetailsPage /> },
+          { path: "/settings", element: <SettingsPage /> },
         ],
       },
     ],
