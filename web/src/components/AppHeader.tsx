@@ -1,4 +1,4 @@
-import { KeyRound, LogOut, Menu, ShieldCheck } from "lucide-react"
+import { KeyRound, LogOut, Menu } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { ThemeToggle } from "@/components/ThemeToggle"
@@ -56,11 +56,7 @@ export function AppHeader() {
       </Link>
 
       <div className="hidden min-w-0 lg:block">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-primary" />
-          Gaucho Racing Vault
-        </div>
-        <div className="mt-1 text-lg font-semibold leading-none">{section}</div>
+        <div className="text-lg font-semibold leading-none">{section}</div>
       </div>
 
       <div className="flex-1" />

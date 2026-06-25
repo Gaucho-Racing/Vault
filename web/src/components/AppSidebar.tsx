@@ -1,4 +1,4 @@
-import { KeyRound, LockKeyhole, ShieldCheck } from "lucide-react"
+import { KeyRound, LockKeyhole } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
@@ -43,15 +43,6 @@ export function AppSidebar() {
           )
         })}
       </nav>
-      <div className="border-t border-sidebar-border/70 p-4">
-        <div className="rounded-lg bg-background/55 p-3 shadow-sm shadow-black/[0.03] dark:bg-background/35 dark:shadow-black/20">
-          <div className="flex items-center gap-2 text-xs font-medium text-sidebar-foreground">
-            <ShieldCheck className="size-3.5 text-primary" />
-            Sentinel protected
-          </div>
-          <div className="mt-1 font-mono text-xs text-muted-foreground">v0.1.0</div>
-        </div>
-      </div>
     </aside>
   )
 }
