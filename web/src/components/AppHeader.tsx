@@ -22,6 +22,7 @@ const mobileItems = [
 
 function sectionTitle(pathname: string) {
   if (pathname.startsWith("/settings")) return "Settings"
+  if (pathname.startsWith("/accounts/new")) return "New Account"
   if (pathname.startsWith("/accounts")) return "Accounts"
   return "Vault"
 }

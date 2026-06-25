@@ -48,6 +48,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/auth/refresh", RefreshSession)
 	router.POST("/auth/logout", Logout)
 	router.GET("/users/@me", GetCurrentUser)
+	router.GET("/groups", ListSentinelGroups)
 
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)
@@ -180,6 +181,9 @@ func RequestTokenCanAccessAccount(c *gin.Context, account model.Account) bool {
 		return false
 	}
 	if RequestTokenHasScope(c, "sentinel:all") {
+		return true
+	}
+	if RequestTokenHasGroupName(c, "Admins") {
 		return true
 	}
 	if len(account.AccessGroupNames) == 0 {

@@ -58,6 +58,19 @@ type User struct {
 	CreatedAt             string   `json:"created_at"`
 }
 
+type Group struct {
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Description    string   `json:"description"`
+	AllowedSources []string `json:"allowed_sources"`
+	CreatedBy      string   `json:"created_by"`
+	MemberCount    int64    `json:"member_count"`
+	OwnerCount     int64    `json:"owner_count"`
+	PendingCount   int64    `json:"pending_count"`
+	UpdatedAt      string   `json:"updated_at"`
+	CreatedAt      string   `json:"created_at"`
+}
+
 var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 func ValidateToken(token string) (map[string]interface{}, error) {
@@ -157,6 +170,46 @@ func GetCurrentUser(accessToken string, userID string) (User, error) {
 		return User{}, err
 	}
 	return user, nil
+}
+
+func GetGroups(accessToken string) ([]Group, error) {
+	if strings.TrimSpace(config.SentinelURL) == "" {
+		return []Group{}, fmt.Errorf("SENTINEL_URL is not configured")
+	}
+	if strings.TrimSpace(accessToken) == "" {
+		return []Group{}, fmt.Errorf("access token is required")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(config.SentinelURL, "/")+"/api/groups", nil)
+	if err != nil {
+		return []Group{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return []Group{}, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return []Group{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		var sentinelErr Error
+		if err := json.Unmarshal(respBody, &sentinelErr); err == nil && sentinelErr.Message != "" {
+			sentinelErr.Code = resp.StatusCode
+			return []Group{}, sentinelErr
+		}
+		return []Group{}, Error{Code: resp.StatusCode, Message: strings.TrimSpace(string(respBody))}
+	}
+
+	groups := []Group{}
+	if err := json.Unmarshal(respBody, &groups); err != nil {
+		return []Group{}, err
+	}
+	return groups, nil
 }
 
 func exchangeToken(form url.Values) (TokenResponse, error) {

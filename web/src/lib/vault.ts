@@ -41,6 +41,19 @@ export type AccountInput = {
   access_group_names: string[]
 }
 
+export type SentinelGroup = {
+  id: string
+  name: string
+  description: string
+  allowed_sources: string[]
+  created_by: string
+  member_count: number
+  owner_count: number
+  pending_count: number
+  updated_at: string
+  created_at: string
+}
+
 export type SecretInput = {
   key: string
   label: string
@@ -74,6 +87,11 @@ export async function getAccount(id: string) {
 
 export async function createAccount(input: AccountInput) {
   const response = await api.post<Account>("/accounts", input)
+  return response.data
+}
+
+export async function listSentinelGroups() {
+  const response = await api.get<SentinelGroup[]>("/groups")
   return response.data
 }
 

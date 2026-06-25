@@ -261,7 +261,7 @@ export default function AccountDetailsPage() {
                 </div>
                 <div className="mt-1 truncate text-sm font-medium">
                   {account.access_group_names.length === 0
-                    ? "All Sentinel users"
+                    ? "Public"
                     : `${account.access_group_names.length} group${account.access_group_names.length === 1 ? "" : "s"}`}
                 </div>
               </div>
@@ -276,7 +276,7 @@ export default function AccountDetailsPage() {
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border/50 pt-4">
             {account.access_group_names.length === 0 ? (
-              <Badge variant="secondary">All Sentinel users</Badge>
+              <Badge variant="secondary">Public</Badge>
             ) : (
               account.access_group_names.map((group) => (
                 <Badge key={group} variant="outline">

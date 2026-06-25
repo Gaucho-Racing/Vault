@@ -1,17 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowUpRight, Clock3, LockKeyhole, Plus, Search, UsersRound } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { toast } from "sonner"
 
-import { AccountFormDialog } from "@/components/AccountFormDialog"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createAccount, listAccounts, type AccountInput } from "@/lib/vault"
+import { listAccounts } from "@/lib/vault"
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, {
@@ -26,32 +24,17 @@ function accountMatches(accountName: string, query: string) {
 }
 
 function accessLabel(groups: string[]) {
-  if (groups.length === 0) return "All Sentinel users"
+  if (groups.length === 0) return "Public"
   if (groups.length === 1) return groups[0]
   return `${groups.length} Sentinel groups`
 }
 
 export default function AccountsPage() {
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: listAccounts,
-  })
-
-  const createMutation = useMutation({
-    mutationFn: createAccount,
-    onSuccess: () => {
-      toast.success("Account created")
-      void queryClient.invalidateQueries({ queryKey: ["accounts"] })
-    },
-    onError: (error) => {
-      const message =
-        (error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Failed to create account"
-      toast.error(message)
-    },
   })
 
   const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data])
@@ -60,26 +43,18 @@ export default function AccountsPage() {
     [accounts, search],
   )
 
-  async function handleCreate(input: AccountInput) {
-    await createMutation.mutateAsync(input)
-  }
-
   return (
     <PageContainer>
       <PageHeader
         title="Accounts"
         description="Manage shared credentials, API keys, and service logins."
         action={
-          <AccountFormDialog
-            isPending={createMutation.isPending}
-            onSubmit={handleCreate}
-            trigger={
-              <Button>
-                <Plus className="size-4" />
-                Account
-              </Button>
-            }
-          />
+          <Button asChild>
+            <Link to="/accounts/new">
+              <Plus className="size-4" />
+              Account
+            </Link>
+          </Button>
         }
       />
 
@@ -146,7 +121,7 @@ export default function AccountsPage() {
                   </div>
                   <div className="flex min-h-6 flex-wrap gap-1.5">
                     {account.access_group_names.length === 0 ? (
-                      <Badge variant="secondary">All Sentinel users</Badge>
+                      <Badge variant="secondary">Public</Badge>
                     ) : (
                       account.access_group_names.map((group) => (
                         <Badge key={group} variant="outline">
