@@ -59,9 +59,11 @@ function GroupPicker({
   onChange: (groups: string[]) => void
 }) {
   const [search, setSearch] = useState("")
+  const [isAdding, setIsAdding] = useState(false)
   const groupsQuery = useQuery({
     queryKey: ["sentinelGroups"],
     queryFn: listSentinelGroups,
+    enabled: isAdding,
     staleTime: 5 * 60 * 1000,
   })
 
@@ -77,6 +79,7 @@ function GroupPicker({
   function addGroup(groupName: string) {
     onChange(normalizeGroups([...selectedGroups, groupName]))
     setSearch("")
+    setIsAdding(false)
   }
 
   function removeGroup(groupName: string) {
@@ -85,60 +88,9 @@ function GroupPicker({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2">
-        <Label htmlFor="account-groups">Sentinel groups</Label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="account-groups"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search groups"
-            className="pl-9"
-          />
-        </div>
-      </div>
+      <Label>Sentinel groups</Label>
 
-      <div className="rounded-lg bg-muted/35 p-2">
-        {groupsQuery.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-9 rounded-md" />
-            ))}
-          </div>
-        ) : groupsQuery.isError ? (
-          <div className="px-2 py-3 text-sm text-muted-foreground">
-            Could not load Sentinel groups.
-          </div>
-        ) : filteredGroups.length === 0 ? (
-          <div className="px-2 py-3 text-sm text-muted-foreground">
-            {search.trim() ? "No matching groups." : "No more groups available."}
-          </div>
-        ) : (
-          <div className="max-h-72 space-y-1 overflow-y-auto">
-            {filteredGroups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => addGroup(group.name)}
-                className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{group.name}</div>
-                  {group.description && (
-                    <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                      {group.description}
-                    </div>
-                  )}
-                </div>
-                <Plus className="size-4 shrink-0 text-primary" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex min-h-8 flex-wrap gap-1.5">
+      <div className="flex min-h-8 flex-wrap items-center gap-1.5">
         {selectedGroups.length === 0 ? (
           <Badge variant="secondary">Public by default</Badge>
         ) : (
@@ -156,7 +108,69 @@ function GroupPicker({
             </Badge>
           ))
         )}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setIsAdding((current) => !current)}
+          aria-expanded={isAdding}
+        >
+          <Plus className="size-3.5" />
+          Add
+        </Button>
       </div>
+
+      {isAdding && (
+        <div className="space-y-2 rounded-lg bg-muted/35 p-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search groups"
+              className="pl-9"
+              autoFocus
+            />
+          </div>
+
+          {groupsQuery.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-9 rounded-md" />
+              ))}
+            </div>
+          ) : groupsQuery.isError ? (
+            <div className="px-2 py-3 text-sm text-muted-foreground">
+              Could not load Sentinel groups.
+            </div>
+          ) : filteredGroups.length === 0 ? (
+            <div className="px-2 py-3 text-sm text-muted-foreground">
+              {search.trim() ? "No matching groups." : "No more groups available."}
+            </div>
+          ) : (
+            <div className="max-h-72 space-y-1 overflow-y-auto">
+              {filteredGroups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => addGroup(group.name)}
+                  className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{group.name}</div>
+                    {group.description && (
+                      <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        {group.description}
+                      </div>
+                    )}
+                  </div>
+                  <Plus className="size-4 shrink-0 text-primary" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
