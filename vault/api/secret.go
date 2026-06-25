@@ -19,8 +19,10 @@ type secretRequest struct {
 }
 
 func ListSecrets(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	accountID := c.Param("id")
-	if _, err := service.GetAccountByID(accountID); err != nil {
+	account, err := service.GetAccountByID(accountID)
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
 			return
@@ -28,6 +30,7 @@ func ListSecrets(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
 	secrets, err := service.GetSecretsForAccount(accountID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -37,7 +40,19 @@ func ListSecrets(c *gin.Context) {
 }
 
 func CreateSecret(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	accountID := c.Param("id")
+	account, err := service.GetAccountByID(accountID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
+
 	var req secretRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -73,6 +88,18 @@ func CreateSecret(c *gin.Context) {
 }
 
 func GetSecret(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+	account, err := service.GetAccountByID(c.Param("id"))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
+
 	secret, err := service.GetSecretForAccount(c.Param("id"), c.Param("secretID"))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -86,6 +113,18 @@ func GetSecret(c *gin.Context) {
 }
 
 func UpdateSecret(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+	account, err := service.GetAccountByID(c.Param("id"))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
+
 	existing, err := service.GetSecretForAccount(c.Param("id"), c.Param("secretID"))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -125,6 +164,18 @@ func UpdateSecret(c *gin.Context) {
 }
 
 func ArchiveSecret(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+	account, err := service.GetAccountByID(c.Param("id"))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
+
 	if err := service.ArchiveSecret(c.Param("id"), c.Param("secretID"), GetRequestEntityID(c)); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "secret not found"})
@@ -137,6 +188,18 @@ func ArchiveSecret(c *gin.Context) {
 }
 
 func RevealSecret(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+	account, err := service.GetAccountByID(c.Param("id"))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
+
 	secret, err := service.GetSecretForAccount(c.Param("id"), c.Param("secretID"))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

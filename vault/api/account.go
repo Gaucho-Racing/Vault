@@ -18,6 +18,7 @@ type accountRequest struct {
 }
 
 func ListAccounts(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	accounts, err := service.GetAllAccounts()
 	if err != nil {
 		if errors.Is(err, service.ErrAccountNameRequired) {
@@ -27,10 +28,17 @@ func ListAccounts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, accounts)
+	authorized := make([]model.Account, 0, len(accounts))
+	for _, account := range accounts {
+		if RequestTokenCanAccessAccount(c, account) {
+			authorized = append(authorized, account)
+		}
+	}
+	c.JSON(http.StatusOK, authorized)
 }
 
 func GetAccount(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	account, err := service.GetAccountWithSecrets(c.Param("id"))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -40,10 +48,12 @@ func GetAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, RequestTokenCanAccessAccount(c, account.Account))
 	c.JSON(http.StatusOK, account)
 }
 
 func CreateAccount(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	var req accountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -69,6 +79,7 @@ func CreateAccount(c *gin.Context) {
 }
 
 func UpdateAccount(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	existing, err := service.GetAccountByID(c.Param("id"))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -78,6 +89,7 @@ func UpdateAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, RequestTokenCanAccessAccount(c, existing))
 
 	var req accountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -103,8 +115,10 @@ func UpdateAccount(c *gin.Context) {
 }
 
 func ArchiveAccount(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	id := c.Param("id")
-	if _, err := service.GetAccountByID(id); err != nil {
+	account, err := service.GetAccountByID(id)
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
 			return
@@ -112,6 +126,7 @@ func ArchiveAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, RequestTokenCanAccessAccount(c, account))
 	if err := service.ArchiveAccount(id, GetRequestEntityID(c)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

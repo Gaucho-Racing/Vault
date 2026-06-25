@@ -34,6 +34,8 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: vault
+      SENTINEL_URL: ${SENTINEL_URL:-https://sentinel-v5.gauchoracing.com}
+      SKIP_AUTH_CHECK: ${SKIP_AUTH_CHECK:-true}
 
   db:
     container_name: vault-db

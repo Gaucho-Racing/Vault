@@ -18,6 +18,9 @@ var DatabaseUser = os.Getenv("DATABASE_USER")
 var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
 var DatabaseName = os.Getenv("DATABASE_NAME")
 
+var SentinelURL = os.Getenv("SENTINEL_URL")
+var SkipAuthCheck = os.Getenv("SKIP_AUTH_CHECK") == "true"
+
 var VaultMasterKey = os.Getenv("VAULT_MASTER_KEY")
 var VaultMasterKeyID = os.Getenv("VAULT_MASTER_KEY_ID")
 
