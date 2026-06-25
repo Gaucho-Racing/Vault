@@ -1,7 +1,7 @@
 import { KeyRound, LogOut, Menu, Settings } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -26,40 +26,41 @@ function sectionTitle(pathname: string) {
   return "Vault"
 }
 
-function avatarLabel(value?: string) {
-  const cleaned = value?.replace(/[^a-z0-9]/gi, "") ?? ""
-  return (cleaned.slice(0, 2) || "VA").toUpperCase()
-}
-
-function shortID(value?: string) {
-  if (!value) return "Unknown"
-  if (value.length <= 18) return value
-  return `${value.slice(0, 10)}...${value.slice(-6)}`
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase()
 }
 
 function HeaderUserMenu() {
   const navigate = useNavigate()
-  const { session, isLoading, logout } = useAuth()
+  const { user, isLoading, logout } = useAuth()
 
-  if (isLoading || !session) {
+  if (isLoading || !user) {
     return <Skeleton className="size-8 rounded-full" />
   }
+
+  const name = `${user.first_name} ${user.last_name}`.trim() || user.username || "Vault user"
+  const email = user.email || user.username
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2">
           <Avatar className="size-8 cursor-pointer">
-            <AvatarFallback>{avatarLabel(session.entity_id)}</AvatarFallback>
+            <AvatarImage src={user.avatar_url} alt={name} />
+            <AvatarFallback>{initials(name)}</AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={10} className="w-64">
+      <DropdownMenuContent align="end" sideOffset={10} className="w-56">
         <DropdownMenuLabel className="flex flex-col">
-          <span className="text-sm font-medium">Sentinel entity</span>
-          <span className="font-mono text-xs font-normal text-muted-foreground">
-            {shortID(session.entity_id)}
-          </span>
+          <span className="text-sm font-medium">{name}</span>
+          <span className="text-xs font-normal text-muted-foreground">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/settings")}>

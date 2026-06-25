@@ -18,12 +18,44 @@ type Error struct {
 	Message string `json:"error"`
 }
 
+func (e Error) Error() string {
+	if e.Code == 0 {
+		return e.Message
+	}
+	return fmt.Sprintf("sentinel error: [%d] %s", e.Code, e.Message)
+}
+
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int    `json:"expires_in"`
 	Scope        string `json:"scope"`
+}
+
+type User struct {
+	ID                    string   `json:"id"`
+	EntityID              string   `json:"entity_id"`
+	Username              string   `json:"username"`
+	FirstName             string   `json:"first_name"`
+	LastName              string   `json:"last_name"`
+	Email                 string   `json:"email"`
+	PhoneNumber           string   `json:"phone_number"`
+	Gender                string   `json:"gender"`
+	Birthday              string   `json:"birthday"`
+	GraduateLevel         string   `json:"graduate_level"`
+	GraduationYear        int      `json:"graduation_year"`
+	Major                 string   `json:"major"`
+	ShirtSize             string   `json:"shirt_size"`
+	JacketSize            string   `json:"jacket_size"`
+	SAERegistrationNumber string   `json:"sae_registration_number"`
+	OccupationTitle       string   `json:"occupation_title"`
+	OccupationCompany     string   `json:"occupation_company"`
+	AvatarURL             string   `json:"avatar_url"`
+	InitialRole           string   `json:"initial_role"`
+	Groups                []string `json:"groups"`
+	UpdatedAt             string   `json:"updated_at"`
+	CreatedAt             string   `json:"created_at"`
 }
 
 var httpClient = &http.Client{Timeout: 5 * time.Second}
@@ -82,6 +114,49 @@ func RefreshToken(refreshToken string) (TokenResponse, error) {
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", refreshToken)
 	return exchangeToken(form)
+}
+
+func GetCurrentUser(accessToken string, userID string) (User, error) {
+	if strings.TrimSpace(config.SentinelURL) == "" {
+		return User{}, fmt.Errorf("SENTINEL_URL is not configured")
+	}
+	if strings.TrimSpace(accessToken) == "" {
+		return User{}, fmt.Errorf("access token is required")
+	}
+	if strings.TrimSpace(userID) == "" {
+		return User{}, fmt.Errorf("user id is required")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(config.SentinelURL, "/")+"/api/users/"+url.PathEscape(userID), nil)
+	if err != nil {
+		return User{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return User{}, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return User{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		var sentinelErr Error
+		if err := json.Unmarshal(respBody, &sentinelErr); err == nil && sentinelErr.Message != "" {
+			sentinelErr.Code = resp.StatusCode
+			return User{}, sentinelErr
+		}
+		return User{}, Error{Code: resp.StatusCode, Message: strings.TrimSpace(string(respBody))}
+	}
+
+	var user User
+	if err := json.Unmarshal(respBody, &user); err != nil {
+		return User{}, err
+	}
+	return user, nil
 }
 
 func exchangeToken(form url.Values) (TokenResponse, error) {

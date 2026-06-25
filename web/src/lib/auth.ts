@@ -10,11 +10,29 @@ export type Session = {
   expiresIn: number
 }
 
-export type CurrentSession = {
+export type CurrentUser = {
+  id: string
   entity_id: string
-  user_id: string
-  scope: string
+  username: string
+  first_name: string
+  last_name: string
+  email: string
+  phone_number: string
+  gender: string
+  birthday: string
+  graduate_level: string
+  graduation_year: number
+  major: string
+  shirt_size: string
+  jacket_size: string
+  sae_registration_number: string
+  occupation_title: string
+  occupation_company: string
+  avatar_url: string
+  initial_role: string
   groups: string[]
+  updated_at: string
+  created_at: string
 }
 
 export function saveSession(session: Session) {
@@ -48,10 +66,10 @@ export function clearSession() {
 export function useAuth() {
   const queryClient = useQueryClient()
   const tokenSession = loadSession()
-  const sessionQuery = useQuery({
-    queryKey: ["session", tokenSession?.accessToken],
+  const userQuery = useQuery({
+    queryKey: ["currentUser", tokenSession?.accessToken],
     queryFn: async () => {
-      const response = await api.get<CurrentSession>("/auth/session")
+      const response = await api.get<CurrentUser>("/@me")
       return response.data
     },
     enabled: !!tokenSession?.accessToken,
@@ -66,10 +84,11 @@ export function useAuth() {
   }
 
   return {
-    session: sessionQuery.data,
+    user: userQuery.data,
     tokenSession,
-    isLoading: sessionQuery.isLoading,
+    isLoading: userQuery.isLoading,
     isAuthenticated: !!tokenSession,
+    refresh: () => queryClient.invalidateQueries({ queryKey: ["currentUser"] }),
     logout,
   }
 }
