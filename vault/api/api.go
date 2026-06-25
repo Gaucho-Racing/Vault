@@ -14,11 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const accessTokenCookieName = "vault_access_token"
-const refreshTokenCookieName = "vault_refresh_token"
-const oauthStateCookieName = "vault_oauth_state"
-const oauthReturnToCookieName = "vault_oauth_return_to"
-
 func Run() {
 	api := InitializeRouter()
 	InitializeRoutes(api)
@@ -38,7 +33,7 @@ func InitializeRouter() *gin.Engine {
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		MaxAge:           12 * time.Hour,
-		AllowCredentials: true,
+		AllowCredentials: false,
 	}))
 	r.Use(AuthChecker())
 	r.Use(UnauthorizedPanicHandler())
@@ -48,8 +43,7 @@ func InitializeRouter() *gin.Engine {
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 
-	router.GET("/auth/login", LoginWithSentinel)
-	router.GET("/auth/callback", SentinelCallback)
+	router.POST("/auth/login", LoginWithSentinel)
 	router.GET("/auth/session", GetSession)
 	router.POST("/auth/refresh", RefreshSession)
 	router.POST("/auth/logout", Logout)
@@ -79,8 +73,6 @@ func AuthChecker() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			token = strings.TrimPrefix(authHeader, "Bearer ")
-		} else if cookieToken, err := c.Cookie(accessTokenCookieName); err == nil {
-			token = cookieToken
 		}
 		if token != "" {
 			claims, err := sentinel.ValidateToken(token)
@@ -98,7 +90,6 @@ func AuthChecker() gin.HandlerFunc {
 
 func authRouteSkipsTokenValidation(path string) bool {
 	return path == "/auth/login" ||
-		path == "/auth/callback" ||
 		path == "/auth/refresh" ||
 		path == "/auth/logout"
 }
