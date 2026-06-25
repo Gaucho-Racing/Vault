@@ -34,6 +34,8 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: vault
+      VAULT_MASTER_KEY: ${VAULT_MASTER_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      VAULT_MASTER_KEY_ID: ${VAULT_MASTER_KEY_ID:-local-dev}
 
   db:
     container_name: vault-db

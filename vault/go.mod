@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/fatih/color v1.18.0
+	github.com/gaucho-racing/ulid-go v1.1.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	go.uber.org/zap v1.27.1

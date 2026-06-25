@@ -35,4 +35,17 @@ func InitializeRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/vault/ping", Ping)
+
+	router.GET("/vault/accounts", ListAccounts)
+	router.POST("/vault/accounts", CreateAccount)
+	router.GET("/vault/accounts/:id", GetAccount)
+	router.PUT("/vault/accounts/:id", UpdateAccount)
+	router.DELETE("/vault/accounts/:id", ArchiveAccount)
+
+	router.GET("/vault/accounts/:id/secrets", ListSecrets)
+	router.POST("/vault/accounts/:id/secrets", CreateSecret)
+	router.GET("/vault/accounts/:id/secrets/:secretID", GetSecret)
+	router.PUT("/vault/accounts/:id/secrets/:secretID", UpdateSecret)
+	router.DELETE("/vault/accounts/:id/secrets/:secretID", ArchiveSecret)
+	router.POST("/vault/accounts/:id/secrets/:secretID/reveal", RevealSecret)
 }

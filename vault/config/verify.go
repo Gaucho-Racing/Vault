@@ -1,6 +1,12 @@
 package config
 
-import "github.com/gaucho-racing/vault/vault/pkg/logger"
+import (
+	"encoding/base64"
+
+	"github.com/gaucho-racing/vault/vault/pkg/logger"
+)
+
+const developmentVaultMasterKey = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 func Verify() {
 	if Env == "" {
@@ -30,5 +36,23 @@ func Verify() {
 	if DatabaseName == "" {
 		DatabaseName = "vault"
 		logger.SugarLogger.Infof("DATABASE_NAME is not set, defaulting to %s", DatabaseName)
+	}
+	if VaultMasterKey == "" {
+		if IsProduction() {
+			logger.SugarLogger.Fatal("VAULT_MASTER_KEY is required in production")
+		}
+		VaultMasterKey = developmentVaultMasterKey
+		logger.SugarLogger.Infof("VAULT_MASTER_KEY is not set, defaulting to development key")
+	}
+	decodedKey, err := base64.StdEncoding.DecodeString(VaultMasterKey)
+	if err != nil {
+		logger.SugarLogger.Fatalf("VAULT_MASTER_KEY must be base64 encoded: %v", err)
+	}
+	if len(decodedKey) != 32 {
+		logger.SugarLogger.Fatalf("VAULT_MASTER_KEY must decode to 32 bytes, got %d", len(decodedKey))
+	}
+	if VaultMasterKeyID == "" {
+		VaultMasterKeyID = "local"
+		logger.SugarLogger.Infof("VAULT_MASTER_KEY_ID is not set, defaulting to %s", VaultMasterKeyID)
 	}
 }
