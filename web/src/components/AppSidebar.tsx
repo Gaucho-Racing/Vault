@@ -15,7 +15,9 @@ export function AppSidebar() {
   return (
     <aside className="hidden border-r bg-sidebar text-sidebar-foreground lg:flex lg:min-h-svh lg:flex-col">
       <div className="flex h-14 items-center gap-2 px-4">
-        <img src="/favicon.svg" alt="Vault" className="size-8 rounded-lg" />
+        <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gr-pink to-gr-purple text-white">
+          <KeyRound className="size-4" />
+        </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold leading-none">Vault</div>
           <div className="mt-1 text-xs text-muted-foreground">Gaucho Racing</div>

@@ -1,42 +1,35 @@
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
-const SESSION_KEY = "vault_session"
+import { api } from "@/lib/api"
 
 export type Session = {
-  accessToken: string
-}
-
-export function saveSession(session: Session) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-}
-
-export function loadSession(): Session | null {
-  const raw = localStorage.getItem(SESSION_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as Session
-  } catch {
-    return null
-  }
-}
-
-export function clearSession() {
-  localStorage.removeItem(SESSION_KEY)
+  entity_id: string
+  user_id: string
+  scope: string
+  groups: string[]
 }
 
 export function useAuth() {
   const queryClient = useQueryClient()
-  const session = loadSession()
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: async () => {
+      const response = await api.get<Session>("/auth/session")
+      return response.data
+    },
+    retry: false,
+  })
 
-  function logout() {
-    clearSession()
+  async function logout() {
+    await api.post("/auth/logout")
     queryClient.clear()
     window.location.href = "/auth/login"
   }
 
   return {
-    session,
-    isAuthenticated: !!session?.accessToken,
+    session: sessionQuery.data,
+    isLoading: sessionQuery.isLoading,
+    isAuthenticated: !!sessionQuery.data,
     logout,
   }
 }

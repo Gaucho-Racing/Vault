@@ -47,7 +47,9 @@ export function AppHeader() {
       </DropdownMenu>
 
       <Link to="/accounts" className="flex items-center gap-2 lg:hidden">
-        <img src="/favicon.svg" alt="Vault" className="size-8 rounded-lg" />
+        <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gr-pink to-gr-purple text-white">
+          <KeyRound className="size-4" />
+        </div>
         <span className="text-sm font-semibold">Vault</span>
       </Link>
 

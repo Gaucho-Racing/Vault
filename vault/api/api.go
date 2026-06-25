@@ -14,6 +14,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const accessTokenCookieName = "vault_access_token"
+const refreshTokenCookieName = "vault_refresh_token"
+const oauthStateCookieName = "vault_oauth_state"
+const oauthReturnToCookieName = "vault_oauth_return_to"
+
 func Run() {
 	api := InitializeRouter()
 	InitializeRoutes(api)
@@ -43,6 +48,12 @@ func InitializeRouter() *gin.Engine {
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 
+	router.GET("/auth/login", LoginWithSentinel)
+	router.GET("/auth/callback", SentinelCallback)
+	router.GET("/auth/session", GetSession)
+	router.POST("/auth/refresh", RefreshSession)
+	router.POST("/auth/logout", Logout)
+
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)
 	router.GET("/accounts/:id", GetAccount)
@@ -59,9 +70,19 @@ func InitializeRoutes(router *gin.Engine) {
 
 func AuthChecker() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if authRouteSkipsTokenValidation(c.Request.URL.Path) {
+			c.Next()
+			return
+		}
+
+		token := ""
 		authHeader := c.GetHeader("Authorization")
 		if strings.HasPrefix(authHeader, "Bearer ") {
-			token := strings.TrimPrefix(authHeader, "Bearer ")
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		} else if cookieToken, err := c.Cookie(accessTokenCookieName); err == nil {
+			token = cookieToken
+		}
+		if token != "" {
 			claims, err := sentinel.ValidateToken(token)
 			if err != nil {
 				logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
@@ -73,6 +94,13 @@ func AuthChecker() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func authRouteSkipsTokenValidation(path string) bool {
+	return path == "/auth/login" ||
+		path == "/auth/callback" ||
+		path == "/auth/refresh" ||
+		path == "/auth/logout"
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {

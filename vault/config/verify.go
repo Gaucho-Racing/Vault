@@ -34,4 +34,10 @@ func Verify() {
 	if SentinelURL == "" {
 		logger.SugarLogger.Fatal("SENTINEL_URL is required")
 	}
+	if SentinelClientID == "" {
+		logger.SugarLogger.Fatal("SENTINEL_CLIENT_ID is required")
+	}
+	if SentinelClientSecret == "" {
+		logger.SugarLogger.Fatal("SENTINEL_CLIENT_SECRET is required")
+	}
 }

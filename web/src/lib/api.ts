@@ -1,27 +1,33 @@
-import axios, { AxiosError } from "axios"
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios"
 
-import { clearSession, loadSession } from "@/lib/auth"
+export const apiBaseURL = `${import.meta.env.VITE_API_URL ?? ""}/api`
 
 export const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL ?? ""}/api`,
-  withCredentials: false,
+  baseURL: apiBaseURL,
+  withCredentials: true,
 })
 
-api.interceptors.request.use((config) => {
-  const session = loadSession()
-  if (session?.accessToken) {
-    config.headers.Authorization = `Bearer ${session.accessToken}`
-  }
-  return config
-})
+type RetriedConfig = InternalAxiosRequestConfig & { _retried?: boolean }
 
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401 && !window.location.pathname.startsWith("/auth/login")) {
-      clearSession()
-      window.location.href = "/auth/login"
+  async (error: AxiosError) => {
+    const original = error.config as RetriedConfig | undefined
+    const status = error.response?.status
+    const url = original?.url ?? ""
+    const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/callback") || url.includes("/auth/refresh")
+
+    if (status !== 401 || !original || original._retried || isAuthEndpoint) {
+      return Promise.reject(error)
     }
-    return Promise.reject(error)
+    original._retried = true
+
+    try {
+      await api.post("/auth/refresh")
+      return api(original)
+    } catch {
+      window.location.href = "/auth/login"
+      return Promise.reject(error)
+    }
   },
 )

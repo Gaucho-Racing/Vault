@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -15,6 +16,14 @@ import (
 type Error struct {
 	Code    int
 	Message string `json:"error"`
+}
+
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope"`
 }
 
 var httpClient = &http.Client{Timeout: 5 * time.Second}
@@ -58,4 +67,67 @@ func ValidateToken(token string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return claims, nil
+}
+
+func ExchangeAuthorizationCode(code string, redirectURI string) (TokenResponse, error) {
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("code", code)
+	form.Set("redirect_uri", redirectURI)
+	return exchangeToken(form)
+}
+
+func RefreshToken(refreshToken string) (TokenResponse, error) {
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", refreshToken)
+	return exchangeToken(form)
+}
+
+func exchangeToken(form url.Values) (TokenResponse, error) {
+	if strings.TrimSpace(config.SentinelURL) == "" {
+		return TokenResponse{}, fmt.Errorf("SENTINEL_URL is not configured")
+	}
+	if strings.TrimSpace(config.SentinelClientID) == "" {
+		return TokenResponse{}, fmt.Errorf("SENTINEL_CLIENT_ID is not configured")
+	}
+	if strings.TrimSpace(config.SentinelClientSecret) == "" {
+		return TokenResponse{}, fmt.Errorf("SENTINEL_CLIENT_SECRET is not configured")
+	}
+	form.Set("client_id", config.SentinelClientID)
+	form.Set("client_secret", config.SentinelClientSecret)
+
+	req, err := http.NewRequest(http.MethodPost, strings.TrimRight(config.SentinelURL, "/")+"/api/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		var sentinelErr Error
+		if err := json.Unmarshal(respBody, &sentinelErr); err != nil {
+			return TokenResponse{}, err
+		}
+		sentinelErr.Code = resp.StatusCode
+		return TokenResponse{}, fmt.Errorf("sentinel error: [%d] %s", sentinelErr.Code, sentinelErr.Message)
+	}
+
+	var token TokenResponse
+	if err := json.Unmarshal(respBody, &token); err != nil {
+		return TokenResponse{}, err
+	}
+	if token.AccessToken == "" {
+		return TokenResponse{}, fmt.Errorf("sentinel token response did not include access token")
+	}
+	return token, nil
 }
