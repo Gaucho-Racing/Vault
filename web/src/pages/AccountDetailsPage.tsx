@@ -47,8 +47,12 @@ function formatDate(value: string) {
 }
 
 async function copyValue(value: string) {
-  await navigator.clipboard.writeText(value)
-  toast.success("Copied")
+  try {
+    await navigator.clipboard.writeText(value)
+    toast.success("Copied")
+  } catch {
+    toast.error("Failed to copy")
+  }
 }
 
 function SecretValue({
@@ -56,14 +60,18 @@ function SecretValue({
   secret,
   revealed,
   revealing,
+  copying,
   onReveal,
+  onCopy,
   onHide,
 }: {
   accountID: string
   secret: Secret
   revealed?: string
   revealing: boolean
+  copying: boolean
   onReveal: (accountID: string, secretID: string) => void
+  onCopy: (accountID: string, secretID: string) => void
   onHide: (secretID: string) => void
 }) {
   if (!secret.sensitive) {
@@ -101,15 +109,26 @@ function SecretValue({
   }
 
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      disabled={revealing}
-      onClick={() => onReveal(accountID, secret.id)}
-    >
-      <Eye className="size-3.5" />
-      {revealing ? "Revealing" : "Reveal"}
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={copying}
+        onClick={() => onCopy(accountID, secret.id)}
+      >
+        <Copy className="size-3.5" />
+        {copying ? "Copying" : "Copy"}
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={revealing}
+        onClick={() => onReveal(accountID, secret.id)}
+      >
+        <Eye className="size-3.5" />
+        {revealing ? "Revealing" : "Reveal"}
+      </Button>
+    </div>
   )
 }
 
@@ -170,6 +189,15 @@ export default function AccountDetailsPage() {
       setRevealed((current) => ({ ...current, [variables.secretID]: value }))
     },
     onError: (error) => toast.error(errorMessage(error, "Failed to reveal secret")),
+  })
+
+  const copySensitiveSecretMutation = useMutation({
+    mutationFn: async ({ accountID, secretID }: { accountID: string; secretID: string }) => {
+      const value = await revealSecret(accountID, secretID)
+      await navigator.clipboard.writeText(value)
+    },
+    onSuccess: () => toast.success("Copied"),
+    onError: (error) => toast.error(errorMessage(error, "Failed to copy secret")),
   })
 
   const account = accountQuery.data
@@ -348,7 +376,11 @@ export default function AccountDetailsPage() {
                     secret={secret}
                     revealed={revealed[secret.id]}
                     revealing={revealMutation.isPending}
+                    copying={copySensitiveSecretMutation.isPending}
                     onReveal={(accountID, secretID) => revealMutation.mutate({ accountID, secretID })}
+                    onCopy={(accountID, secretID) =>
+                      copySensitiveSecretMutation.mutate({ accountID, secretID })
+                    }
                     onHide={(secretID) =>
                       setRevealed((current) => {
                         const next = { ...current }
