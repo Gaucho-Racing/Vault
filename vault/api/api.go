@@ -47,7 +47,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/auth/session", GetSession)
 	router.POST("/auth/refresh", RefreshSession)
 	router.POST("/auth/logout", Logout)
-	router.GET("/@me", GetCurrentUser)
+	router.GET("/users/@me", GetCurrentUser)
 
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)

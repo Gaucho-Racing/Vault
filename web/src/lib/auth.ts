@@ -69,7 +69,7 @@ export function useAuth() {
   const userQuery = useQuery({
     queryKey: ["currentUser", tokenSession?.accessToken],
     queryFn: async () => {
-      const response = await api.get<CurrentUser>("/@me")
+      const response = await api.get<CurrentUser>("/users/@me")
       return response.data
     },
     enabled: !!tokenSession?.accessToken,
