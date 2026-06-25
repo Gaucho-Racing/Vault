@@ -105,14 +105,14 @@ export function SecretFormDialog({
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm dark:bg-muted/30">
+            <span className="font-medium">Sensitive</span>
             <input
               type="checkbox"
               checked={sensitive}
               onChange={(event) => setSensitive(event.target.checked)}
               className="size-4 accent-gr-pink"
             />
-            Sensitive
           </label>
 
           <DialogFooter>

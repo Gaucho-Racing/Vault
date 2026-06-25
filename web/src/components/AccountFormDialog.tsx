@@ -68,25 +68,27 @@ export function AccountFormDialog({
             <DialogTitle>{account ? "Edit account" : "New account"}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor="account-name">Name</Label>
-            <Input
-              id="account-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="account-name">Name</Label>
+              <Input
+                id="account-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="account-url">URL</Label>
-            <Input
-              id="account-url"
-              type="url"
-              value={url}
-              onChange={(event) => setURL(event.target.value)}
-              placeholder="https://"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="account-url">URL</Label>
+              <Input
+                id="account-url"
+                type="url"
+                value={url}
+                onChange={(event) => setURL(event.target.value)}
+                placeholder="https://"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

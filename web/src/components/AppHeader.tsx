@@ -1,6 +1,7 @@
-import { KeyRound, LogOut, Menu } from "lucide-react"
+import { KeyRound, LogOut, Menu, ShieldCheck } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,12 +20,13 @@ const mobileItems = [{ to: "/accounts", label: "Accounts", icon: KeyRound }]
 export function AppHeader() {
   const { pathname } = useLocation()
   const { logout } = useAuth()
+  const section = pathname.startsWith("/accounts") ? "Accounts" : "Vault"
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/65 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/60 bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/75 lg:px-6">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden">
+          <Button variant="outline" size="icon" className="lg:hidden">
             <Menu className="size-4" />
             <span className="sr-only">Open navigation</span>
           </Button>
@@ -47,17 +49,27 @@ export function AppHeader() {
       </DropdownMenu>
 
       <Link to="/accounts" className="flex items-center gap-2 lg:hidden">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gr-pink to-gr-purple text-white">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/20">
           <KeyRound className="size-4" />
         </div>
         <span className="text-sm font-semibold">Vault</span>
       </Link>
 
+      <div className="hidden min-w-0 lg:block">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+          <ShieldCheck className="size-3.5 text-primary" />
+          Gaucho Racing Vault
+        </div>
+        <div className="mt-1 text-lg font-semibold leading-none">{section}</div>
+      </div>
+
       <div className="flex-1" />
+
+      <ThemeToggle />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <button className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2">
             <Avatar className="size-8 cursor-pointer">
               <AvatarFallback>V</AvatarFallback>
             </Avatar>

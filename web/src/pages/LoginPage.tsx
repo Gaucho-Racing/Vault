@@ -1,8 +1,7 @@
-import { ArrowRight, KeyRound, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
-import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { clearSession, saveSession } from "@/lib/auth"
 
@@ -21,7 +20,8 @@ export default function LoginPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const exchangedRef = useRef(false)
-  const [loading, setLoading] = useState(searchParams.has("code"))
+  const redirectedRef = useRef(false)
+  const [loading, setLoading] = useState(!searchParams.has("error"))
   const [errorMessage, setErrorMessage] = useState("")
   const fromLocation = (
     location.state as {
@@ -35,7 +35,16 @@ export default function LoginPage() {
   useEffect(() => {
     if (exchangedRef.current) return
     const code = searchParams.get("code")
-    if (!code) return
+    const oauthError = searchParams.get("error")
+    if (!code) {
+      if (oauthError) {
+        return
+      }
+      if (redirectedRef.current) return
+      redirectedRef.current = true
+      redirectToSentinel(from)
+      return
+    }
     exchangedRef.current = true
 
     void (async () => {
@@ -65,34 +74,13 @@ export default function LoginPage() {
     })()
   }, [from, navigate, searchParams])
 
-  function login() {
-    const params = new URLSearchParams({
-      client_id: sentinelClientID,
-      response_type: "code",
-      redirect_uri: `${window.location.origin}/auth/login`,
-      scope: oauthScope,
-      prompt: "none",
-      state: sanitizeReturnTo(from),
-    })
-    window.location.href = `${sentinelURL.replace(/\/+$/, "")}/oauth/authorize?${params.toString()}`
-  }
-
   return (
     <main className="flex min-h-svh items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-7">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
-            <KeyRound className="size-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in to Vault</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Continue with your Sentinel account.</p>
-          </div>
-        </div>
-
+      <div className="w-full max-w-sm space-y-5 text-center">
         {loading && (
-          <div className="flex items-center justify-center py-6">
+          <div className="flex flex-col items-center gap-3">
             <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Redirecting to Sentinel...</p>
           </div>
         )}
 
@@ -101,16 +89,21 @@ export default function LoginPage() {
             {errorMessage || "Sentinel sign-on failed. Please try again."}
           </div>
         )}
-
-        {!loading && (
-          <Button type="button" className="h-10 w-full" onClick={login}>
-            Sentinel Sign On
-            <ArrowRight className="size-4" />
-          </Button>
-        )}
       </div>
     </main>
   )
+}
+
+function redirectToSentinel(returnTo: string) {
+  const params = new URLSearchParams({
+    client_id: sentinelClientID,
+    response_type: "code",
+    redirect_uri: `${window.location.origin}/auth/login`,
+    scope: oauthScope,
+    prompt: "none",
+    state: sanitizeReturnTo(returnTo),
+  })
+  window.location.href = `${sentinelURL.replace(/\/+$/, "")}/oauth/authorize?${params.toString()}`
 }
 
 function sanitizeReturnTo(value: string) {

@@ -1,5 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Copy, Eye, EyeOff, ExternalLink, Plus, Trash2 } from "lucide-react"
+import {
+  ArrowLeft,
+  Clock3,
+  Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  UsersRound,
+} from "lucide-react"
 import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -27,6 +38,14 @@ function errorMessage(error: unknown, fallback: string) {
   return (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
 }
 
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
 async function copyValue(value: string) {
   await navigator.clipboard.writeText(value)
   toast.success("Copied")
@@ -50,7 +69,7 @@ function SecretValue({
   if (!secret.sensitive) {
     return (
       <div className="flex min-w-0 items-center gap-2">
-        <code className="min-w-0 truncate rounded bg-muted px-2 py-1 text-xs">
+        <code className="min-w-0 truncate rounded-md bg-muted px-2.5 py-1.5 text-xs">
           {secret.plain_value || "empty"}
         </code>
         {secret.plain_value && (
@@ -66,7 +85,9 @@ function SecretValue({
   if (revealed !== undefined) {
     return (
       <div className="flex min-w-0 items-center gap-2">
-        <code className="min-w-0 truncate rounded bg-muted px-2 py-1 text-xs">{revealed}</code>
+        <code className="min-w-0 truncate rounded-md bg-muted px-2.5 py-1.5 text-xs">
+          {revealed}
+        </code>
         <Button variant="ghost" size="icon-sm" onClick={() => void copyValue(revealed)}>
           <Copy className="size-3.5" />
           <span className="sr-only">Copy</span>
@@ -81,7 +102,7 @@ function SecretValue({
 
   return (
     <Button
-      variant="outline"
+      variant="secondary"
       size="sm"
       disabled={revealing}
       onClick={() => onReveal(accountID, secret.id)}
@@ -156,8 +177,9 @@ export default function AccountDetailsPage() {
   if (accountQuery.isLoading) {
     return (
       <PageContainer>
-        <Skeleton className="mb-6 h-8 w-48" />
-        <Skeleton className="h-96 rounded-xl" />
+        <Skeleton className="mb-4 h-8 w-48" />
+        <Skeleton className="h-32 rounded-lg" />
+        <Skeleton className="mt-4 h-96 rounded-lg" />
       </PageContainer>
     )
   }
@@ -184,60 +206,96 @@ export default function AccountDetailsPage() {
 
   return (
     <PageContainer>
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <Button asChild variant="ghost" size="sm" className="-ml-2 mb-3">
+      <div className="mb-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link to="/accounts">
               <ArrowLeft className="size-4" />
               Accounts
             </Link>
           </Button>
-          <h1 className="truncate text-2xl font-semibold tracking-tight">{account.name}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            {account.description || "No description"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {account.url && (
-            <Button asChild variant="outline">
-              <a href={account.url} target="_blank" rel="noreferrer">
-                <ExternalLink className="size-4" />
-                Open
-              </a>
+          <div className="flex flex-wrap justify-end gap-2">
+            {account.url && (
+              <Button asChild variant="outline">
+                <a href={account.url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-4" />
+                  Open
+                </a>
+              </Button>
+            )}
+            <AccountFormDialog
+              account={account}
+              isPending={updateAccountMutation.isPending}
+              onSubmit={handleUpdate}
+              trigger={<Button variant="outline">Edit</Button>}
+            />
+            <Button
+              variant="destructive"
+              disabled={archiveAccountMutation.isPending}
+              onClick={() => archiveAccountMutation.mutate()}
+            >
+              <Trash2 className="size-4" />
+              Archive
             </Button>
-          )}
-          <AccountFormDialog
-            account={account}
-            isPending={updateAccountMutation.isPending}
-            onSubmit={handleUpdate}
-            trigger={<Button variant="outline">Edit</Button>}
-          />
-          <Button
-            variant="destructive"
-            disabled={archiveAccountMutation.isPending}
-            onClick={() => archiveAccountMutation.mutate()}
-          >
-            <Trash2 className="size-4" />
-            Archive
-          </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="mb-8 flex flex-wrap gap-1.5">
-        {account.access_group_names.length === 0 ? (
-          <Badge variant="secondary">All Sentinel users</Badge>
-        ) : (
-          account.access_group_names.map((group) => (
-            <Badge key={group} variant="outline">
-              {group}
-            </Badge>
-          ))
-        )}
+        <div className="rounded-lg bg-card p-4 shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <ShieldCheck className="size-5" />
+                </div>
+                <h1 className="truncate text-2xl font-semibold">{account.name}</h1>
+              </div>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+                {account.description || "No description"}
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:w-[420px]">
+              <div className="rounded-lg bg-muted/45 p-3 dark:bg-muted/35">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <UsersRound className="size-3.5" />
+                  Access
+                </div>
+                <div className="mt-1 truncate text-sm font-medium">
+                  {account.access_group_names.length === 0
+                    ? "All Sentinel users"
+                    : `${account.access_group_names.length} group${account.access_group_names.length === 1 ? "" : "s"}`}
+                </div>
+              </div>
+              <div className="rounded-lg bg-muted/45 p-3 dark:bg-muted/35">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock3 className="size-3.5" />
+                  Updated
+                </div>
+                <div className="mt-1 truncate text-sm font-medium">{formatDate(account.updated_at)}</div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border/50 pt-4">
+            {account.access_group_names.length === 0 ? (
+              <Badge variant="secondary">All Sentinel users</Badge>
+            ) : (
+              account.access_group_names.map((group) => (
+                <Badge key={group} variant="outline">
+                  {group}
+                </Badge>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Secrets</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/50 pb-4">
+          <div>
+            <CardTitle>Secrets</CardTitle>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {account.secrets.length} item{account.secrets.length === 1 ? "" : "s"}
+            </div>
+          </div>
           <SecretFormDialog
             isPending={createSecretMutation.isPending}
             onSubmit={handleCreateSecret}
@@ -251,15 +309,27 @@ export default function AccountDetailsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {account.secrets.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-              No secrets yet.
+            <div className="flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                <ShieldCheck className="size-5 text-muted-foreground" />
+              </div>
+              <div className="mt-4 text-sm font-medium">No secrets yet</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Add the first username, password, token, or note for this account.
+              </div>
             </div>
           ) : (
-            <div className="divide-y">
+            <div>
+              <div className="hidden grid-cols-[minmax(180px,1fr)_160px_minmax(220px,1.4fr)_44px] border-b border-border/50 bg-muted/35 px-4 py-2 text-xs font-medium text-muted-foreground lg:grid">
+                <div>Secret</div>
+                <div>Type</div>
+                <div>Value</div>
+                <div />
+              </div>
               {account.secrets.map((secret) => (
                 <div
                   key={secret.id}
-                  className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1fr)_160px_minmax(220px,1.4fr)_auto] lg:items-center"
+                  className="grid gap-3 border-b border-border/45 px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(180px,1fr)_160px_minmax(220px,1.4fr)_44px] lg:items-center"
                 >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{secret.label || secret.key}</div>

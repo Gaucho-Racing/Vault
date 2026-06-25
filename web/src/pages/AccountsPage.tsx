@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowUpRight, Plus, Search } from "lucide-react"
+import { ArrowUpRight, Clock3, LockKeyhole, Plus, Search, UsersRound } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
@@ -23,6 +23,12 @@ function formatDate(value: string) {
 
 function accountMatches(accountName: string, query: string) {
   return accountName.toLowerCase().includes(query.trim().toLowerCase())
+}
+
+function accessLabel(groups: string[]) {
+  if (groups.length === 0) return "All Sentinel users"
+  if (groups.length === 1) return groups[0]
+  return `${groups.length} Sentinel groups`
 }
 
 export default function AccountsPage() {
@@ -62,7 +68,7 @@ export default function AccountsPage() {
     <PageContainer>
       <PageHeader
         title="Accounts"
-        description={`${accounts.length} account${accounts.length === 1 ? "" : "s"}`}
+        description="Manage shared credentials, API keys, and service logins."
         action={
           <AccountFormDialog
             isPending={createMutation.isPending}
@@ -77,44 +83,68 @@ export default function AccountsPage() {
         }
       />
 
-      <div className="mb-5 flex max-w-sm items-center gap-2 rounded-lg border bg-background px-3">
-        <Search className="size-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search accounts"
-          className="border-0 px-0 shadow-none focus-visible:ring-0"
-        />
+      <div className="mb-6 grid gap-3 lg:grid-cols-[1fr_260px_260px]">
+        <div className="flex h-11 min-w-0 items-center gap-2 rounded-lg bg-card px-3 shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search accounts"
+            className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+          />
+        </div>
+        <div className="flex h-11 items-center gap-3 rounded-lg bg-card px-3 text-sm shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+          <LockKeyhole className="size-4 text-primary" />
+          <span className="text-muted-foreground">Accounts</span>
+          <span className="ml-auto font-medium">{accounts.length}</span>
+        </div>
+        <div className="flex h-11 items-center gap-3 rounded-lg bg-card px-3 text-sm shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+          <UsersRound className="size-4 text-primary" />
+          <span className="text-muted-foreground">Visible results</span>
+          <span className="ml-auto font-medium">{filteredAccounts.length}</span>
+        </div>
       </div>
 
       {accountsQuery.isLoading ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-40 rounded-xl" />
+            <Skeleton key={index} className="h-44 rounded-lg" />
           ))}
         </div>
       ) : filteredAccounts.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No accounts found.
+          <CardContent className="flex min-h-56 flex-col items-center justify-center py-10 text-center">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+              <Search className="size-5 text-muted-foreground" />
+            </div>
+            <div className="mt-4 text-sm font-medium">No accounts found</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Try a different search or create a new account.
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filteredAccounts.map((account) => (
-            <Link key={account.id} to={`/accounts/${account.id}`}>
-              <Card className="h-full transition-colors hover:bg-muted/40">
-                <CardHeader>
+            <Link key={account.id} to={`/accounts/${account.id}`} className="group">
+              <Card className="h-full gap-5 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg hover:shadow-black/5 dark:hover:border-primary/30 dark:hover:shadow-black/25">
+                <CardHeader className="gap-3">
                   <CardTitle className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 truncate">{account.name}</span>
-                    <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate text-base font-semibold">{account.name}</span>
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                      <ArrowUpRight className="size-4" />
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
+                  <p className="line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
                     {account.description || "No description"}
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-2 text-xs">
+                    <UsersRound className="size-3.5 shrink-0 text-primary" />
+                    <span className="min-w-0 truncate">{accessLabel(account.access_group_names)}</span>
+                  </div>
+                  <div className="flex min-h-6 flex-wrap gap-1.5">
                     {account.access_group_names.length === 0 ? (
                       <Badge variant="secondary">All Sentinel users</Badge>
                     ) : (
@@ -125,7 +155,8 @@ export default function AccountsPage() {
                       ))
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+                    <Clock3 className="size-3.5" />
                     Updated {formatDate(account.updated_at)}
                   </div>
                 </CardContent>
