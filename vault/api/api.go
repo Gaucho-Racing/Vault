@@ -62,6 +62,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.PUT("/accounts/:id/secrets/:secretID", UpdateSecret)
 	router.DELETE("/accounts/:id/secrets/:secretID", DeleteSecret)
 	router.POST("/accounts/:id/secrets/:secretID/reveal", RevealSecret)
+	router.POST("/accounts/:id/secrets/:secretID/totp", GenerateTOTPCode)
 }
 
 func AuthChecker() gin.HandlerFunc {

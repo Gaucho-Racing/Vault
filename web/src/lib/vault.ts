@@ -30,6 +30,15 @@ export type Secret = {
   updated_at: string
 }
 
+export type TOTPCode = {
+  code: string
+  period: number
+  digits: number
+  algorithm: string
+  seconds_remaining: number
+  expires_at: string
+}
+
 export type AccountWithSecrets = Account & {
   secrets: Secret[]
 }
@@ -122,4 +131,9 @@ export async function revealSecret(accountID: string, secretID: string) {
     `/accounts/${accountID}/secrets/${secretID}/reveal`,
   )
   return response.data.value
+}
+
+export async function generateTOTPCode(accountID: string, secretID: string) {
+  const response = await api.post<TOTPCode>(`/accounts/${accountID}/secrets/${secretID}/totp`)
+  return response.data
 }
