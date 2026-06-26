@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Globe2, Plus, Search, ShieldCheck, X } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -60,6 +60,7 @@ function GroupPicker({
 }) {
   const [search, setSearch] = useState("")
   const [isAdding, setIsAdding] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const groupsQuery = useQuery({
     queryKey: ["sentinelGroups"],
     queryFn: listSentinelGroups,
@@ -76,6 +77,12 @@ function GroupPicker({
       .slice(0, 8)
   }, [groupsQuery.data, search, selectedSet])
 
+  useEffect(() => {
+    if (isAdding) {
+      searchInputRef.current?.focus()
+    }
+  }, [isAdding])
+
   function addGroup(groupName: string) {
     onChange(normalizeGroups([...selectedGroups, groupName]))
     setSearch("")
@@ -87,29 +94,34 @@ function GroupPicker({
   }
 
   function toggleAdding() {
-    setIsAdding((current) => {
-      if (current) {
-        setSearch("")
-      }
-      return !current
-    })
+    const nextIsAdding = !isAdding
+    if (!nextIsAdding) {
+      setSearch("")
+    }
+    setIsAdding(nextIsAdding)
   }
 
   return (
-    <div className="space-y-3">
+    <div>
       <Label>Sentinel groups</Label>
 
-      <div className="flex min-h-8 flex-wrap items-center gap-1.5">
+      <div className="mt-3 flex min-h-9 flex-wrap items-center gap-2">
         {selectedGroups.length === 0 ? (
-          <Badge variant="secondary">Public by default</Badge>
+          <Badge variant="secondary" className="h-9 rounded-lg px-3 text-sm">
+            Public by default
+          </Badge>
         ) : (
           selectedGroups.map((group) => (
-            <Badge key={group} variant="secondary" className="gap-1.5 pr-1">
+            <Badge
+              key={group}
+              variant="secondary"
+              className="h-9 gap-1.5 rounded-lg px-3 pr-2 text-sm"
+            >
               {group}
               <button
                 type="button"
                 onClick={() => removeGroup(group)}
-                className="rounded-sm p-0.5 hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
+                className="rounded-md p-1 hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
               >
                 <X className="size-3" />
                 <span className="sr-only">Remove {group}</span>
@@ -123,7 +135,7 @@ function GroupPicker({
           size="sm"
           onClick={toggleAdding}
           aria-expanded={isAdding}
-          className="min-w-24 transition-colors duration-200"
+          className="h-9 min-w-24 gap-1.5 rounded-lg px-3 text-sm transition-colors duration-200"
         >
           <Plus
             className={`size-3.5 transition-transform duration-200 ${
@@ -134,57 +146,72 @@ function GroupPicker({
         </Button>
       </div>
 
-      {isAdding && (
-        <div className="space-y-2 rounded-lg bg-muted/35 p-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search groups"
-              className="pl-9"
-              autoFocus
-            />
-          </div>
+      <div
+        aria-hidden={!isAdding}
+        className={cn(
+          "grid overflow-hidden transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out",
+          isAdding ? "mt-3 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div
+            className={cn(
+              "space-y-2 rounded-lg bg-muted/35 p-2 transition-transform duration-200 ease-out",
+              isAdding ? "translate-y-0" : "-translate-y-1"
+            )}
+          >
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search groups"
+                className="pl-9"
+                tabIndex={isAdding ? 0 : -1}
+              />
+            </div>
 
-          {groupsQuery.isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-9 rounded-md" />
-              ))}
-            </div>
-          ) : groupsQuery.isError ? (
-            <div className="px-2 py-3 text-sm text-muted-foreground">
-              Could not load Sentinel groups.
-            </div>
-          ) : filteredGroups.length === 0 ? (
-            <div className="px-2 py-3 text-sm text-muted-foreground">
-              {search.trim() ? "No matching groups." : "No more groups available."}
-            </div>
-          ) : (
-            <div className="max-h-72 space-y-1 overflow-y-auto">
-              {filteredGroups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => addGroup(group.name)}
-                  className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{group.name}</div>
-                    {group.description && (
-                      <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                        {group.description}
-                      </div>
-                    )}
-                  </div>
-                  <Plus className="size-4 shrink-0 text-primary" />
-                </button>
-              ))}
-            </div>
-          )}
+            {groupsQuery.isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="h-9 rounded-md" />
+                ))}
+              </div>
+            ) : groupsQuery.isError ? (
+              <div className="px-2 py-3 text-sm text-muted-foreground">
+                Could not load Sentinel groups.
+              </div>
+            ) : filteredGroups.length === 0 ? (
+              <div className="px-2 py-3 text-sm text-muted-foreground">
+                {search.trim() ? "No matching groups." : "No more groups available."}
+              </div>
+            ) : (
+              <div className="max-h-72 space-y-1 overflow-y-auto">
+                {filteredGroups.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => addGroup(group.name)}
+                    tabIndex={isAdding ? 0 : -1}
+                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{group.name}</div>
+                      {group.description && (
+                        <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                          {group.description}
+                        </div>
+                      )}
+                    </div>
+                    <Plus className="size-4 shrink-0 text-primary" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
