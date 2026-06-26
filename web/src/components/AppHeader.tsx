@@ -1,4 +1,4 @@
-import { KeyRound, LogOut, Menu, Settings, SquareTerminal } from "lucide-react"
+import { CodeXml, KeyRound, LogOut, Menu, Settings } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 
 const mobileItems = [
   { to: "/accounts", label: "Accounts", icon: KeyRound },
-  { to: "/app-secrets", label: "App Secrets", icon: SquareTerminal },
+  { to: "/app-secrets", label: "App Secrets", icon: CodeXml },
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 

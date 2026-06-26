@@ -7,7 +7,7 @@ import {
   Eye,
   EyeOff,
   Plus,
-  SquareTerminal,
+  CodeXml,
   Trash2,
   UsersRound,
 } from "lucide-react"
@@ -364,7 +364,7 @@ export default function AppSecretApplicationDetailsPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <SquareTerminal className="size-5" />
+                  <CodeXml className="size-5" />
                 </div>
                 <h1 className="truncate font-mono text-2xl font-semibold">{application.name}</h1>
               </div>
@@ -450,7 +450,7 @@ export default function AppSecretApplicationDetailsPage() {
           {application.secrets.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
               <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                <SquareTerminal className="size-5 text-muted-foreground" />
+                <CodeXml className="size-5 text-muted-foreground" />
               </div>
               <div className="mt-4 text-sm font-medium">No app secrets yet</div>
               <div className="mt-1 text-sm text-muted-foreground">

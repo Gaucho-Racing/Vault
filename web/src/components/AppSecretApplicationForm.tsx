@@ -1,4 +1,4 @@
-import { Globe2, ShieldCheck, SquareTerminal } from "lucide-react"
+import { CodeXml, Globe2, ShieldCheck } from "lucide-react"
 import { useState } from "react"
 
 import { GroupPicker } from "@/components/AccountForm"
@@ -68,7 +68,7 @@ export function AppSecretApplicationForm({
       <div className="space-y-2">
         <Label htmlFor="application-name">Name</Label>
         <div className="relative">
-          <SquareTerminal className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <CodeXml className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="application-name"
             value={name}

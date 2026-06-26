@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowUpRight, Clock3, Plus, Search, SquareTerminal } from "lucide-react"
+import { ArrowUpRight, Clock3, CodeXml, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -106,7 +106,7 @@ export default function AppSecretsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-2 text-xs">
-                    <SquareTerminal className="size-3.5 shrink-0 text-primary" />
+                    <CodeXml className="size-3.5 shrink-0 text-primary" />
                     <span className="min-w-0 truncate">
                       {secretCountLabel(application.secret_count)}
                     </span>
