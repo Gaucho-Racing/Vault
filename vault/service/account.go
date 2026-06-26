@@ -17,15 +17,43 @@ type AccountWithSecrets struct {
 	Secrets []model.Secret `json:"secrets"`
 }
 
-func GetAllAccounts() ([]model.Account, error) {
+type AccountWithSecretCount struct {
+	model.Account
+	SecretCount int64 `json:"secret_count"`
+}
+
+type accountSecretCount struct {
+	AccountID   string
+	SecretCount int64
+}
+
+func GetAllAccounts() ([]AccountWithSecretCount, error) {
 	accounts := []model.Account{}
 	if err := database.DB.
 		Where("deleted_at IS NULL").
 		Order("name ASC").
 		Find(&accounts).Error; err != nil {
-		return []model.Account{}, err
+		return []AccountWithSecretCount{}, err
 	}
-	return accounts, nil
+
+	accountIDs := make([]string, 0, len(accounts))
+	for _, account := range accounts {
+		accountIDs = append(accountIDs, account.ID)
+	}
+
+	countsByAccountID, err := getSecretCountsByAccountID(accountIDs)
+	if err != nil {
+		return []AccountWithSecretCount{}, err
+	}
+
+	result := make([]AccountWithSecretCount, 0, len(accounts))
+	for _, account := range accounts {
+		result = append(result, AccountWithSecretCount{
+			Account:     account,
+			SecretCount: countsByAccountID[account.ID],
+		})
+	}
+	return result, nil
 }
 
 func GetAccountByID(id string) (model.Account, error) {
@@ -46,6 +74,28 @@ func GetAccountWithSecrets(id string) (AccountWithSecrets, error) {
 		return AccountWithSecrets{}, err
 	}
 	return AccountWithSecrets{Account: account, Secrets: secrets}, nil
+}
+
+func getSecretCountsByAccountID(accountIDs []string) (map[string]int64, error) {
+	countsByAccountID := make(map[string]int64, len(accountIDs))
+	if len(accountIDs) == 0 {
+		return countsByAccountID, nil
+	}
+
+	counts := []accountSecretCount{}
+	if err := database.DB.
+		Model(&model.Secret{}).
+		Select("account_id, count(*) as secret_count").
+		Where("account_id IN ? AND deleted_at IS NULL", accountIDs).
+		Group("account_id").
+		Scan(&counts).Error; err != nil {
+		return map[string]int64{}, err
+	}
+
+	for _, count := range counts {
+		countsByAccountID[count.AccountID] = count.SecretCount
+	}
+	return countsByAccountID, nil
 }
 
 func CreateAccount(account model.Account) (model.Account, error) {

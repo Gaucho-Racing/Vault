@@ -373,7 +373,14 @@ export default function AccountDetailsPage() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {secret.type && <Badge variant="outline">{secret.type}</Badge>}
-                    <Badge variant={secret.sensitive ? "secondary" : "outline"}>
+                    <Badge
+                      variant="outline"
+                      className={
+                        secret.sensitive
+                          ? "border-transparent bg-gr-pink/10 text-gr-pink dark:bg-gr-pink/20"
+                          : undefined
+                      }
+                    >
                       {secret.sensitive ? "Sensitive" : "Plain"}
                     </Badge>
                   </div>

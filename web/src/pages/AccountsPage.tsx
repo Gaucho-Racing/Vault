@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowUpRight, Clock3, Plus, Search, UsersRound } from "lucide-react"
+import { ArrowUpRight, Clock3, KeyRound, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -23,10 +23,8 @@ function accountMatches(accountName: string, query: string) {
   return accountName.toLowerCase().includes(query.trim().toLowerCase())
 }
 
-function accessLabel(groups: string[]) {
-  if (groups.length === 0) return "Public"
-  if (groups.length === 1) return groups[0]
-  return `${groups.length} Sentinel groups`
+function secretCountLabel(count: number) {
+  return `${count} secret${count === 1 ? "" : "s"}`
 }
 
 export default function AccountsPage() {
@@ -104,8 +102,8 @@ export default function AccountsPage() {
                     {account.description || "No description"}
                   </p>
                   <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-2 text-xs">
-                    <UsersRound className="size-3.5 shrink-0 text-primary" />
-                    <span className="min-w-0 truncate">{accessLabel(account.access_group_names)}</span>
+                    <KeyRound className="size-3.5 shrink-0 text-primary" />
+                    <span className="min-w-0 truncate">{secretCountLabel(account.secret_count)}</span>
                   </div>
                   <div className="flex min-h-6 flex-wrap gap-1.5">
                     {account.access_group_names.length === 0 ? (

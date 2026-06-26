@@ -34,6 +34,10 @@ export type AccountWithSecrets = Account & {
   secrets: Secret[]
 }
 
+export type AccountListItem = Account & {
+  secret_count: number
+}
+
 export type AccountInput = {
   name: string
   description: string
@@ -76,7 +80,7 @@ export const commonSecretTypes = [
 ]
 
 export async function listAccounts() {
-  const response = await api.get<Account[]>("/accounts")
+  const response = await api.get<AccountListItem[]>("/accounts")
   return response.data
 }
 

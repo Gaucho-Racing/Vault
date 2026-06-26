@@ -28,9 +28,9 @@ func ListAccounts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	authorized := make([]model.Account, 0, len(accounts))
+	authorized := make([]service.AccountWithSecretCount, 0, len(accounts))
 	for _, account := range accounts {
-		if RequestTokenCanAccessAccount(c, account) {
+		if RequestTokenCanAccessAccount(c, account.Account) {
 			authorized = append(authorized, account)
 		}
 	}
