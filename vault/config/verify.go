@@ -1,6 +1,9 @@
 package config
 
-import "github.com/gaucho-racing/vault/vault/pkg/logger"
+import (
+	"github.com/gaucho-racing/vault/vault/pkg/githubactions"
+	"github.com/gaucho-racing/vault/vault/pkg/logger"
+)
 
 func Verify() {
 	if Env == "" {
@@ -39,5 +42,13 @@ func Verify() {
 	}
 	if SentinelClientSecret == "" {
 		logger.SugarLogger.Fatal("SENTINEL_CLIENT_SECRET is required")
+	}
+	if GitHubActionsOIDCIssuer == "" {
+		GitHubActionsOIDCIssuer = githubactions.DefaultIssuer
+		logger.SugarLogger.Infof("GITHUB_ACTIONS_OIDC_ISSUER is not set, defaulting to %s", GitHubActionsOIDCIssuer)
+	}
+	if GitHubActionsOIDCAudience == "" {
+		GitHubActionsOIDCAudience = githubactions.DefaultAudience
+		logger.SugarLogger.Infof("GITHUB_ACTIONS_OIDC_AUDIENCE is not set, defaulting to %s", GitHubActionsOIDCAudience)
 	}
 }

@@ -71,6 +71,14 @@ func GetApplicationByID(id string) (model.Application, error) {
 	return application, nil
 }
 
+func GetApplicationByName(name string) (model.Application, error) {
+	var application model.Application
+	if err := database.DB.Where("name = ?", strings.ToLower(strings.TrimSpace(name))).First(&application).Error; err != nil {
+		return model.Application{}, err
+	}
+	return application, nil
+}
+
 func GetApplicationWithSecrets(id string) (ApplicationWithSecrets, error) {
 	application, err := GetApplicationByID(id)
 	if err != nil {
@@ -137,6 +145,16 @@ func GetAppSecretForApplication(applicationID string, secretID string) (model.Ap
 	var secret model.AppSecret
 	if err := database.DB.
 		Where("id = ? AND application_id = ?", secretID, applicationID).
+		First(&secret).Error; err != nil {
+		return model.AppSecret{}, err
+	}
+	return secret, nil
+}
+
+func GetAppSecretForApplicationByKey(applicationID string, key string) (model.AppSecret, error) {
+	var secret model.AppSecret
+	if err := database.DB.
+		Where("application_id = ? AND key = ?", applicationID, strings.ToLower(strings.TrimSpace(key))).
 		First(&secret).Error; err != nil {
 		return model.AppSecret{}, err
 	}

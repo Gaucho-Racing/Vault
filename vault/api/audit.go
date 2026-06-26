@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gaucho-racing/vault/vault/model"
 	"github.com/gaucho-racing/vault/vault/pkg/logger"
@@ -12,6 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+const auditViewDebounceWindow = 2 * time.Minute
 
 type auditActorResponse struct {
 	UserID    string `json:"user_id"`

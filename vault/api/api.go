@@ -43,12 +43,19 @@ func InitializeRouter() *gin.Engine {
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 
+	router.POST("/integrations/github/actions/env", ExportGitHubActionsEnv)
+
 	router.POST("/auth/login", LoginWithSentinel)
 	router.GET("/auth/session", GetSession)
 	router.POST("/auth/refresh", RefreshSession)
 	router.POST("/auth/logout", Logout)
 	router.GET("/users/@me", GetCurrentUser)
 	router.GET("/groups", ListSentinelGroups)
+
+	router.GET("/integrations/github/actions/rules", ListGitHubActionsRules)
+	router.POST("/integrations/github/actions/rules", CreateGitHubActionsRule)
+	router.PUT("/integrations/github/actions/rules/:id", UpdateGitHubActionsRule)
+	router.DELETE("/integrations/github/actions/rules/:id", DeleteGitHubActionsRule)
 
 	router.POST("/secrets/totp/qr", DecodeTOTPRegistrationQRCode)
 
@@ -108,7 +115,8 @@ func AuthChecker() gin.HandlerFunc {
 func authRouteSkipsTokenValidation(path string) bool {
 	return path == "/auth/login" ||
 		path == "/auth/refresh" ||
-		path == "/auth/logout"
+		path == "/auth/logout" ||
+		path == "/integrations/github/actions/env"
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {
@@ -224,6 +232,10 @@ func RequestTokenCanAccessApplication(c *gin.Context, application model.Applicat
 }
 
 func RequestTokenCanViewAuditLogs(c *gin.Context) bool {
+	return RequestTokenHasScope(c, "sentinel:all") || RequestTokenHasGroupName(c, "Admins")
+}
+
+func RequestTokenCanManageSettings(c *gin.Context) bool {
 	return RequestTokenHasScope(c, "sentinel:all") || RequestTokenHasGroupName(c, "Admins")
 }
 

@@ -472,7 +472,7 @@ export default function AppSecretApplicationDetailsPage() {
                   <div className="min-w-0">
                     <div className="truncate font-mono text-sm font-medium">{secret.key}</div>
                     <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                      {application.name}/{secret.key}
+                      {application.name}.{secret.key}
                     </div>
                   </div>
                   <SecretValue

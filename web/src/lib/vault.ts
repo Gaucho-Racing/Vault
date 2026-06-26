@@ -126,6 +126,27 @@ export type AppSecretApplicationInput = {
   access_group_names: string[]
 }
 
+export type GitHubActionsRule = {
+  id: string
+  name: string
+  repository_patterns: string[]
+  ref_patterns: string[]
+  secret_selectors: string[]
+  enabled: boolean
+  created_by_entity_id: string
+  updated_by_entity_id: string
+  created_at: string
+  updated_at: string
+}
+
+export type GitHubActionsRuleInput = {
+  name: string
+  repository_patterns: string[]
+  ref_patterns: string[]
+  secret_selectors: string[]
+  enabled: boolean
+}
+
 export type SentinelGroup = {
   id: string
   name: string
@@ -165,6 +186,36 @@ export const commonSecretTypes = [
   "note",
 ]
 
+type AppSecretApplicationResponseFields = {
+  access_group_names?: string[] | null
+}
+
+type GitHubActionsRuleResponseFields = {
+  repository_patterns?: string[] | null
+  ref_patterns?: string[] | null
+  secret_selectors?: string[] | null
+}
+
+function normalizeStringArray(value: string[] | null | undefined) {
+  return Array.isArray(value) ? value : []
+}
+
+function normalizeAppSecretApplication<T extends AppSecretApplicationResponseFields>(application: T) {
+  return {
+    ...application,
+    access_group_names: normalizeStringArray(application.access_group_names),
+  }
+}
+
+function normalizeGitHubActionsRule<T extends GitHubActionsRuleResponseFields>(rule: T) {
+  return {
+    ...rule,
+    repository_patterns: normalizeStringArray(rule.repository_patterns),
+    ref_patterns: normalizeStringArray(rule.ref_patterns),
+    secret_selectors: normalizeStringArray(rule.secret_selectors),
+  }
+}
+
 export async function listAccounts() {
   const response = await api.get<AccountListItem[]>("/accounts")
   return response.data
@@ -172,26 +223,45 @@ export async function listAccounts() {
 
 export async function listAppSecretApplications() {
   const response = await api.get<AppSecretApplicationListItem[]>("/app-secrets")
-  return response.data
+  return response.data.map(normalizeAppSecretApplication)
 }
 
 export async function createAppSecretApplication(input: AppSecretApplicationInput) {
   const response = await api.post<AppSecretApplication>("/app-secrets", input)
-  return response.data
+  return normalizeAppSecretApplication(response.data)
 }
 
 export async function getAppSecretApplication(id: string) {
   const response = await api.get<AppSecretApplicationWithSecrets>(`/app-secrets/${id}`)
-  return response.data
+  return normalizeAppSecretApplication(response.data)
 }
 
 export async function updateAppSecretApplication(id: string, input: AppSecretApplicationInput) {
   const response = await api.put<AppSecretApplication>(`/app-secrets/${id}`, input)
-  return response.data
+  return normalizeAppSecretApplication(response.data)
 }
 
 export async function deleteAppSecretApplication(id: string) {
   await api.delete(`/app-secrets/${id}`)
+}
+
+export async function listGitHubActionsRules() {
+  const response = await api.get<GitHubActionsRule[]>("/integrations/github/actions/rules")
+  return response.data.map(normalizeGitHubActionsRule)
+}
+
+export async function createGitHubActionsRule(input: GitHubActionsRuleInput) {
+  const response = await api.post<GitHubActionsRule>("/integrations/github/actions/rules", input)
+  return normalizeGitHubActionsRule(response.data)
+}
+
+export async function updateGitHubActionsRule(id: string, input: GitHubActionsRuleInput) {
+  const response = await api.put<GitHubActionsRule>(`/integrations/github/actions/rules/${id}`, input)
+  return normalizeGitHubActionsRule(response.data)
+}
+
+export async function deleteGitHubActionsRule(id: string) {
+  await api.delete(`/integrations/github/actions/rules/${id}`)
 }
 
 export async function createAppSecret(applicationID: string, input: AppSecretInput) {
