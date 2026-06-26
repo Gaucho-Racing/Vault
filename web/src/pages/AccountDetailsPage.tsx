@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  History,
   Plus,
   ShieldCheck,
   Trash2,
@@ -19,18 +20,22 @@ import { AccountFormDialog } from "@/components/AccountFormDialog"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { PageContainer } from "@/components/PageContainer"
 import { SecretFormDialog } from "@/components/SecretFormDialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/lib/auth"
 import {
   createSecret,
   deleteAccount,
   deleteSecret,
   generateTOTPCode,
   getAccount,
+  listAccountAuditLogs,
   revealSecret,
   updateAccount,
+  type AuditLog,
   type AccountInput,
   type Secret,
   type SecretInput,
@@ -38,6 +43,7 @@ import {
 } from "@/lib/vault"
 
 const TOTP_SECRET_TYPE = "totp_seed"
+const AUDIT_LOG_PAGE_SIZE = 10
 
 function errorMessage(error: unknown, fallback: string) {
   return (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
@@ -48,6 +54,16 @@ function formatDate(value: string) {
     month: "short",
     day: "numeric",
     year: "numeric",
+  })
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   })
 }
 
@@ -68,6 +84,67 @@ function formatTOTPCode(code: string) {
   if (code.length === 6) return `${code.slice(0, 3)} ${code.slice(3)}`
   if (code.length === 8) return `${code.slice(0, 4)} ${code.slice(4)}`
   return code
+}
+
+function auditActionLabel(action: string) {
+  switch (action) {
+    case "account.created":
+      return "Created account"
+    case "account.updated":
+      return "Updated account"
+    case "account.deleted":
+      return "Deleted account"
+    case "account.viewed":
+      return "Viewed account"
+    case "secret.viewed":
+      return "Viewed secret"
+    default:
+      return action
+  }
+}
+
+function auditActorName(auditLog: AuditLog) {
+  const actor = auditLog.actor
+  if (!actor) return auditLog.actor_user_id || auditLog.actor_entity_id || "Unknown actor"
+  return (
+    [actor.first_name, actor.last_name].filter(Boolean).join(" ") ||
+    actor.username ||
+    actor.email ||
+    actor.user_id ||
+    auditLog.actor_entity_id ||
+    "Unknown actor"
+  )
+}
+
+function auditActorInitials(auditLog: AuditLog) {
+  const actor = auditLog.actor
+  const source =
+    [actor?.first_name, actor?.last_name].filter(Boolean).join(" ") ||
+    actor?.username ||
+    actor?.email ||
+    auditLog.actor_user_id ||
+    auditLog.actor_entity_id
+  const initials = source
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("")
+  return initials || "?"
+}
+
+function auditTargetLabel(auditLog: AuditLog) {
+  if (auditLog.secret_id) {
+    return auditLog.secret_label || auditLog.secret_key || auditLog.secret_id
+  }
+  return auditLog.account_name || auditLog.account_id
+}
+
+function auditTargetSecondary(auditLog: AuditLog) {
+  if (auditLog.secret_id) {
+    return auditLog.secret_key || auditLog.secret_id
+  }
+  return ""
 }
 
 function TOTPSecretValue({ accountID, secret }: { accountID: string; secret: Secret }) {
@@ -223,12 +300,21 @@ export default function AccountDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [revealed, setRevealed] = useState<Record<string, string>>({})
+  const [auditLogLimit, setAuditLogLimit] = useState(AUDIT_LOG_PAGE_SIZE)
+  const canViewAuditLog = user?.groups.includes("Admins") ?? false
 
   const accountQuery = useQuery({
     queryKey: ["account", id],
     queryFn: () => getAccount(id ?? ""),
     enabled: !!id,
+  })
+
+  const auditLogsQuery = useQuery({
+    queryKey: ["accountAuditLogs", id, auditLogLimit],
+    queryFn: () => listAccountAuditLogs(id ?? "", auditLogLimit),
+    enabled: !!id && canViewAuditLog,
   })
 
   const createSecretMutation = useMutation({
@@ -245,6 +331,7 @@ export default function AccountDetailsPage() {
     onSuccess: () => {
       toast.success("Account updated")
       void queryClient.invalidateQueries({ queryKey: ["account", id] })
+      void queryClient.invalidateQueries({ queryKey: ["accountAuditLogs", id] })
       void queryClient.invalidateQueries({ queryKey: ["accounts"] })
     },
     onError: (error) => toast.error(errorMessage(error, "Failed to update account")),
@@ -254,6 +341,7 @@ export default function AccountDetailsPage() {
     mutationFn: () => deleteAccount(id ?? ""),
     onSuccess: () => {
       toast.success("Account deleted")
+      void queryClient.invalidateQueries({ queryKey: ["accountAuditLogs", id] })
       void queryClient.invalidateQueries({ queryKey: ["accounts"] })
       navigate("/accounts", { replace: true })
     },
@@ -511,6 +599,97 @@ export default function AccountDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      {canViewAuditLog && (
+        <Card className="mt-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/50 pb-4">
+            <div>
+              <CardTitle>Audit log</CardTitle>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Recent account activity
+              </div>
+            </div>
+            <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <History className="size-4" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {auditLogsQuery.isLoading ? (
+              <div className="space-y-3 p-4">
+                <Skeleton className="h-12 rounded-lg" />
+                <Skeleton className="h-12 rounded-lg" />
+                <Skeleton className="h-12 rounded-lg" />
+              </div>
+            ) : auditLogsQuery.isError ? (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                Could not load audit log.
+              </div>
+            ) : (auditLogsQuery.data ?? []).length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                No audit events yet.
+              </div>
+            ) : (
+              <div>
+                {(auditLogsQuery.data ?? []).map((auditLog) => (
+                  <div
+                    key={auditLog.id}
+                    className="grid gap-3 border-b border-border/45 px-4 py-4 last:border-b-0 md:grid-cols-[minmax(180px,1fr)_minmax(240px,1fr)_180px] md:items-center"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {auditActionLabel(auditLog.action)}
+                      </div>
+                      <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                        {auditTargetLabel(auditLog)}
+                      </div>
+                      {auditTargetSecondary(auditLog) !== auditTargetLabel(auditLog) && (
+                        <div className="mt-1 truncate font-mono text-xs text-muted-foreground/80">
+                          {auditTargetSecondary(auditLog)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar>
+                        {auditLog.actor?.avatar_url && (
+                          <AvatarImage src={auditLog.actor.avatar_url} alt={auditActorName(auditLog)} />
+                        )}
+                        <AvatarFallback>{auditActorInitials(auditLog)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm">{auditActorName(auditLog)}</div>
+                        {auditLog.ip_address && (
+                          <div className="mt-1 truncate text-xs text-muted-foreground">
+                            {auditLog.ip_address}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground md:text-right">
+                      {formatDateTime(auditLog.created_at)}
+                    </div>
+                  </div>
+                ))}
+                {(auditLogsQuery.data ?? []).length >= auditLogLimit && auditLogLimit < 100 && (
+                  <div className="border-t border-border/45 px-4 py-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={auditLogsQuery.isFetching}
+                      onClick={() =>
+                        setAuditLogLimit((current) => Math.min(current + AUDIT_LOG_PAGE_SIZE, 100))
+                      }
+                    >
+                      {auditLogsQuery.isFetching ? "Loading" : "Load more"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </PageContainer>
   )
 }

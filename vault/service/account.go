@@ -8,6 +8,7 @@ import (
 	"github.com/gaucho-racing/ulid-go"
 	"github.com/gaucho-racing/vault/vault/database"
 	"github.com/gaucho-racing/vault/vault/model"
+	"gorm.io/gorm"
 )
 
 var ErrAccountNameRequired = errors.New("account name is required")
@@ -99,6 +100,25 @@ func getSecretCountsByAccountID(accountIDs []string) (map[string]int64, error) {
 }
 
 func CreateAccount(account model.Account) (model.Account, error) {
+	return createAccount(database.DB, account)
+}
+
+func CreateAccountWithAudit(account model.Account, auditLog model.AuditLog) (model.Account, error) {
+	created := model.Account{}
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+		created, err = createAccount(tx, account)
+		if err != nil {
+			return err
+		}
+		auditLog.AccountID = created.ID
+		auditLog.AccountName = created.Name
+		return recordAuditLog(tx, auditLog)
+	})
+	return created, err
+}
+
+func createAccount(db *gorm.DB, account model.Account) (model.Account, error) {
 	if account.ID == "" {
 		account.ID = ulid.Make().Prefixed("acct")
 	}
@@ -106,32 +126,73 @@ func CreateAccount(account model.Account) (model.Account, error) {
 	if account.Name == "" {
 		return model.Account{}, ErrAccountNameRequired
 	}
-	if err := database.DB.Create(&account).Error; err != nil {
+	if err := db.Create(&account).Error; err != nil {
 		return model.Account{}, err
 	}
 	return account, nil
 }
 
 func UpdateAccount(account model.Account) (model.Account, error) {
+	return updateAccount(database.DB, account)
+}
+
+func UpdateAccountWithAudit(account model.Account, auditLog model.AuditLog) (model.Account, error) {
+	updated := model.Account{}
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+		updated, err = updateAccount(tx, account)
+		if err != nil {
+			return err
+		}
+		auditLog.AccountID = updated.ID
+		auditLog.AccountName = updated.Name
+		return recordAuditLog(tx, auditLog)
+	})
+	return updated, err
+}
+
+func updateAccount(db *gorm.DB, account model.Account) (model.Account, error) {
 	normalizeAccount(&account)
 	if account.Name == "" {
 		return model.Account{}, ErrAccountNameRequired
 	}
-	if err := database.DB.Save(&account).Error; err != nil {
+	if err := db.Save(&account).Error; err != nil {
 		return model.Account{}, err
 	}
 	return account, nil
 }
 
 func DeleteAccount(id string, entityID string) error {
+	return deleteAccount(database.DB, id, entityID)
+}
+
+func DeleteAccountWithAudit(account model.Account, entityID string, auditLog model.AuditLog) error {
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := deleteAccount(tx, account.ID, entityID); err != nil {
+			return err
+		}
+		auditLog.AccountID = account.ID
+		auditLog.AccountName = account.Name
+		return recordAuditLog(tx, auditLog)
+	})
+}
+
+func deleteAccount(db *gorm.DB, id string, entityID string) error {
 	now := time.Now()
-	return database.DB.
+	result := db.
 		Model(&model.Account{}).
-		Where("id = ?", id).
+		Where("id = ? AND deleted_at IS NULL", id).
 		Updates(map[string]interface{}{
 			"deleted_at":           &now,
 			"updated_by_entity_id": entityID,
-		}).Error
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func normalizeAccount(account *model.Account) {

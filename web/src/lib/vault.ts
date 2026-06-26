@@ -47,6 +47,35 @@ export type TOTPRegistration = {
   suggested_label: string
 }
 
+export type AuditActor = {
+  user_id: string
+  entity_id: string
+  username: string
+  first_name: string
+  last_name: string
+  email: string
+  avatar_url: string
+}
+
+export type AuditLog = {
+  id: string
+  action: string
+  actor_entity_id: string
+  actor_user_id: string
+  actor_group_names: string[]
+  account_id: string
+  account_name: string
+  secret_id: string
+  secret_key: string
+  secret_label: string
+  request_method: string
+  request_path: string
+  ip_address: string
+  user_agent: string
+  created_at: string
+  actor?: AuditActor
+}
+
 export type AccountWithSecrets = Account & {
   secrets: Secret[]
 }
@@ -103,6 +132,13 @@ export async function listAccounts() {
 
 export async function getAccount(id: string) {
   const response = await api.get<AccountWithSecrets>(`/accounts/${id}`)
+  return response.data
+}
+
+export async function listAccountAuditLogs(id: string, limit = 10) {
+  const response = await api.get<AuditLog[]>(`/accounts/${id}/audit-logs`, {
+    params: { limit },
+  })
   return response.data
 }
 
