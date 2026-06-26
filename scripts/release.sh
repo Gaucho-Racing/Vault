@@ -69,6 +69,7 @@ fi
 SEMVER="$INPUT"
 VERSION="v${INPUT}"
 TAG="$VERSION"
+IMAGES=("vault" "vault-web")
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
@@ -89,7 +90,9 @@ echo "  Files to update:"
 echo "    vault/config/config.go"
 echo ""
 echo "  Docker images that will be tagged:"
-echo "    ghcr.io/gaucho-racing/vault:${SEMVER}"
+for image in "${IMAGES[@]}"; do
+    echo "    ghcr.io/gaucho-racing/${image}:${SEMVER}"
+done
 echo ""
 read -rp "Proceed? (y/N) " CONFIRM
 if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
@@ -109,4 +112,4 @@ gh release create "$TAG" \
     --generate-notes
 
 echo ""
-echo "Done. ${TAG} released. The vault workflow will publish images shortly."
+echo "Done. ${TAG} released. Workflows will publish images shortly."
