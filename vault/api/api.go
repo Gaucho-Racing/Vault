@@ -55,6 +55,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)
 	router.GET("/accounts/:id", GetAccount)
+	router.GET("/accounts/:id/audit-logs", ListAccountAuditLogs)
 	router.PUT("/accounts/:id", UpdateAccount)
 	router.DELETE("/accounts/:id", DeleteAccount)
 
@@ -193,6 +194,10 @@ func RequestTokenCanAccessAccount(c *gin.Context, account model.Account) bool {
 		return true
 	}
 	return RequestTokenHasAnyGroupName(c, account.AccessGroupNames)
+}
+
+func RequestTokenCanViewAuditLogs(c *gin.Context) bool {
+	return RequestTokenHasScope(c, "sentinel:all") || RequestTokenHasGroupName(c, "Admins")
 }
 
 func GetRequestToken(c *gin.Context) string {

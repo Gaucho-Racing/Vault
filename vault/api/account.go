@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gaucho-racing/vault/vault/model"
 	"github.com/gaucho-racing/vault/vault/service"
@@ -49,6 +50,10 @@ func GetAccount(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account.Account))
+	if err := service.RecordAccountViewAuditLog(newAccountAuditLog(c, service.AuditActionAccountViewed, account.Account), 2*time.Minute); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, account)
 }
 
@@ -59,14 +64,14 @@ func CreateAccount(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	account, err := service.CreateAccount(model.Account{
+	account, err := service.CreateAccountWithAudit(model.Account{
 		Name:              req.Name,
 		Description:       req.Description,
 		URL:               req.URL,
 		AccessGroupNames:  req.AccessGroupNames,
 		CreatedByEntityID: GetRequestEntityID(c),
 		UpdatedByEntityID: GetRequestEntityID(c),
-	})
+	}, newAccountAuditLog(c, service.AuditActionAccountCreated, model.Account{}))
 	if err != nil {
 		if errors.Is(err, service.ErrAccountNameRequired) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -102,7 +107,7 @@ func UpdateAccount(c *gin.Context) {
 	existing.AccessGroupNames = req.AccessGroupNames
 	existing.UpdatedByEntityID = GetRequestEntityID(c)
 
-	updated, err := service.UpdateAccount(existing)
+	updated, err := service.UpdateAccountWithAudit(existing, newAccountAuditLog(c, service.AuditActionAccountUpdated, existing))
 	if err != nil {
 		if errors.Is(err, service.ErrAccountNameRequired) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -127,7 +132,11 @@ func DeleteAccount(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account))
-	if err := service.DeleteAccount(id, GetRequestEntityID(c)); err != nil {
+	if err := service.DeleteAccountWithAudit(account, GetRequestEntityID(c), newAccountAuditLog(c, service.AuditActionAccountDeleted, account)); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

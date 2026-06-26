@@ -110,6 +110,10 @@ func GetSecret(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err := service.RecordAuditLog(newSecretAuditLog(c, service.AuditActionSecretViewed, account, secret)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, secret)
 }
 
@@ -219,6 +223,10 @@ func RevealSecret(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err := service.RecordAuditLog(newSecretAuditLog(c, service.AuditActionSecretViewed, account, secret)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"value": value})
 }
 
@@ -288,6 +296,10 @@ func GenerateTOTPCode(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.RecordAuditLog(newSecretAuditLog(c, service.AuditActionSecretViewed, account, secret)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
