@@ -1,4 +1,6 @@
+import { QrCode } from "lucide-react"
 import { useState, type ReactNode } from "react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +24,68 @@ import { Textarea } from "@/components/ui/textarea"
 import { commonSecretTypes, type SecretInput } from "@/lib/vault"
 
 const CUSTOM_SECRET_TYPE = "__custom__"
+const TOTP_SECRET_TYPE = "totp_seed"
+
+function getClipboardImageFile(event: React.ClipboardEvent) {
+  for (const item of Array.from(event.clipboardData.items)) {
+    if (!item.type.startsWith("image/")) continue
+    const file = item.getAsFile()
+    if (file) return file
+  }
+  return null
+}
+
+async function decodeQRCodeFromImage(file: File) {
+  const { default: jsQR } = await import("jsqr")
+  const bitmap = await createImageBitmap(file)
+  try {
+    const canvas = document.createElement("canvas")
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const context = canvas.getContext("2d")
+    if (!context) {
+      throw new Error("Could not read QR image")
+    }
+    context.drawImage(bitmap, 0, 0)
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "attemptBoth",
+    })
+    if (!code?.data) {
+      throw new Error("No QR code found")
+    }
+    return code.data
+  } finally {
+    bitmap.close()
+  }
+}
+
+function parseTOTPURL(value: string) {
+  const url = new URL(value)
+  if (url.protocol !== "otpauth:" || url.host !== "totp") {
+    throw new Error("QR code is not a TOTP registration code")
+  }
+  if (!url.searchParams.get("secret")) {
+    throw new Error("TOTP registration code is missing a seed")
+  }
+  const rawLabel = decodeURIComponent(url.pathname.replace(/^\/+/, ""))
+  const separatorIndex = rawLabel.indexOf(":")
+  const issuerFromLabel = separatorIndex >= 0 ? rawLabel.slice(0, separatorIndex) : ""
+  const accountName = separatorIndex >= 0 ? rawLabel.slice(separatorIndex + 1) : rawLabel
+  const issuer = url.searchParams.get("issuer") || issuerFromLabel
+  return {
+    accountName: accountName.trim(),
+    issuer: issuer.trim(),
+  }
+}
+
+function slugifySecretKey(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+  return slug || "code"
+}
 
 export function SecretFormDialog({
   trigger,
@@ -39,7 +103,9 @@ export function SecretFormDialog({
   const [isCustomType, setIsCustomType] = useState(false)
   const [plainValue, setPlainValue] = useState("")
   const [sensitive, setSensitive] = useState(true)
+  const [isDecodingQRCode, setIsDecodingQRCode] = useState(false)
   const selectedType = commonSecretTypes.includes(type) ? type : isCustomType ? CUSTOM_SECRET_TYPE : undefined
+  const hasTOTPRegistrationURL = plainValue.trim().toLowerCase().startsWith("otpauth://totp/")
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -57,13 +123,42 @@ export function SecretFormDialog({
     setIsCustomType(false)
     setPlainValue("")
     setSensitive(true)
+    setIsDecodingQRCode(false)
+  }
+
+  async function handlePaste(event: React.ClipboardEvent) {
+    const imageFile = getClipboardImageFile(event)
+    if (!imageFile) return
+
+    event.preventDefault()
+    setIsDecodingQRCode(true)
+    try {
+      const decodedValue = await decodeQRCodeFromImage(imageFile)
+      const totpRegistration = parseTOTPURL(decodedValue)
+      setType(TOTP_SECRET_TYPE)
+      setIsCustomType(false)
+      setSensitive(true)
+      setPlainValue(decodedValue)
+      setKey((current) =>
+        current || `totp_${slugifySecretKey(totpRegistration.accountName || totpRegistration.issuer)}`
+      )
+      setLabel((current) =>
+        current ||
+        [totpRegistration.issuer, totpRegistration.accountName].filter(Boolean).join(" ")
+      )
+      toast.success("TOTP QR loaded")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to read TOTP QR")
+    } finally {
+      setIsDecodingQRCode(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} onPaste={(event) => void handlePaste(event)} className="space-y-4">
           <DialogHeader>
             <DialogTitle>New secret</DialogTitle>
           </DialogHeader>
@@ -136,6 +231,25 @@ export function SecretFormDialog({
               required={sensitive}
             />
           </div>
+
+          {type === TOTP_SECRET_TYPE && (
+            <div
+              tabIndex={0}
+              className="flex items-center gap-3 rounded-lg border border-dashed border-gr-pink/35 bg-gr-pink/8 px-3 py-2.5 outline-none transition-colors focus-visible:border-gr-purple focus-visible:ring-3 focus-visible:ring-gr-purple/20 dark:bg-gr-pink/12"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background text-gr-pink shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+                <QrCode className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium">
+                  {isDecodingQRCode ? "Scanning QR" : "Paste QR screenshot"}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {hasTOTPRegistrationURL ? "Registration QR loaded" : "TOTP registration"}
+                </div>
+              </div>
+            </div>
+          )}
 
           <label className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm dark:bg-muted/30">
             <span className="font-medium">Sensitive</span>
