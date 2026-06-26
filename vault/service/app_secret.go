@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/gaucho-racing/ulid-go"
 	"github.com/gaucho-racing/vault/vault/database"
@@ -39,7 +38,6 @@ var appSecretIdentifierPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 func GetAllApplications() ([]ApplicationWithSecretCount, error) {
 	applications := []model.Application{}
 	if err := database.DB.
-		Where("deleted_at IS NULL").
 		Order("name ASC").
 		Find(&applications).Error; err != nil {
 		return []ApplicationWithSecretCount{}, err
@@ -67,7 +65,7 @@ func GetAllApplications() ([]ApplicationWithSecretCount, error) {
 
 func GetApplicationByID(id string) (model.Application, error) {
 	var application model.Application
-	if err := database.DB.Where("id = ? AND deleted_at IS NULL", id).First(&application).Error; err != nil {
+	if err := database.DB.Where("id = ?", id).First(&application).Error; err != nil {
 		return model.Application{}, err
 	}
 	return application, nil
@@ -108,26 +106,12 @@ func UpdateApplication(application model.Application) (model.Application, error)
 	return application, nil
 }
 
-func DeleteApplication(application model.Application, entityID string) error {
-	now := time.Now()
+func DeleteApplication(application model.Application) error {
 	return database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.
-			Model(&model.AppSecret{}).
-			Where("application_id = ? AND deleted_at IS NULL", application.ID).
-			Updates(map[string]interface{}{
-				"deleted_at":           &now,
-				"updated_by_entity_id": entityID,
-			}).Error; err != nil {
+		if err := tx.Where("application_id = ?", application.ID).Delete(&model.AppSecret{}).Error; err != nil {
 			return err
 		}
-
-		result := tx.
-			Model(&model.Application{}).
-			Where("id = ? AND deleted_at IS NULL", application.ID).
-			Updates(map[string]interface{}{
-				"deleted_at":           &now,
-				"updated_by_entity_id": entityID,
-			})
+		result := tx.Where("id = ?", application.ID).Delete(&model.Application{})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -141,7 +125,7 @@ func DeleteApplication(application model.Application, entityID string) error {
 func GetAppSecretsForApplication(applicationID string) ([]model.AppSecret, error) {
 	secrets := []model.AppSecret{}
 	if err := database.DB.
-		Where("application_id = ? AND deleted_at IS NULL", applicationID).
+		Where("application_id = ?", applicationID).
 		Order("key ASC").
 		Find(&secrets).Error; err != nil {
 		return []model.AppSecret{}, err
@@ -152,7 +136,7 @@ func GetAppSecretsForApplication(applicationID string) ([]model.AppSecret, error
 func GetAppSecretForApplication(applicationID string, secretID string) (model.AppSecret, error) {
 	var secret model.AppSecret
 	if err := database.DB.
-		Where("id = ? AND application_id = ? AND deleted_at IS NULL", secretID, applicationID).
+		Where("id = ? AND application_id = ?", secretID, applicationID).
 		First(&secret).Error; err != nil {
 		return model.AppSecret{}, err
 	}
@@ -188,15 +172,10 @@ func UpdateAppSecret(secret model.AppSecret) (model.AppSecret, error) {
 	return secret, nil
 }
 
-func DeleteAppSecret(applicationID string, secretID string, entityID string) error {
-	now := time.Now()
+func DeleteAppSecret(applicationID string, secretID string) error {
 	result := database.DB.
-		Model(&model.AppSecret{}).
-		Where("id = ? AND application_id = ? AND deleted_at IS NULL", secretID, applicationID).
-		Updates(map[string]interface{}{
-			"deleted_at":           &now,
-			"updated_by_entity_id": entityID,
-		})
+		Where("id = ? AND application_id = ?", secretID, applicationID).
+		Delete(&model.AppSecret{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -240,7 +219,7 @@ func getAppSecretCountsByApplicationID(applicationIDs []string) (map[string]int6
 	if err := database.DB.
 		Model(&model.AppSecret{}).
 		Select("application_id, count(*) as secret_count").
-		Where("application_id IN ? AND deleted_at IS NULL", applicationIDs).
+		Where("application_id IN ?", applicationIDs).
 		Group("application_id").
 		Scan(&counts).Error; err != nil {
 		return map[string]int64{}, err

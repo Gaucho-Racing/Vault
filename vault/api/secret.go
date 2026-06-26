@@ -181,7 +181,7 @@ func DeleteSecret(c *gin.Context) {
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account))
 
-	if err := service.DeleteSecret(c.Param("id"), c.Param("secretID"), GetRequestEntityID(c)); err != nil {
+	if err := service.DeleteSecret(c.Param("id"), c.Param("secretID")); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "secret not found"})
 			return
