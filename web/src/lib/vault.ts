@@ -135,8 +135,10 @@ export async function getAccount(id: string) {
   return response.data
 }
 
-export async function listAccountAuditLogs(id: string) {
-  const response = await api.get<AuditLog[]>(`/accounts/${id}/audit-logs`)
+export async function listAccountAuditLogs(id: string, limit = 10) {
+  const response = await api.get<AuditLog[]>(`/accounts/${id}/audit-logs`, {
+    params: { limit },
+  })
   return response.data
 }
 

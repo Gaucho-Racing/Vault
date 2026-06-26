@@ -43,6 +43,7 @@ import {
 } from "@/lib/vault"
 
 const TOTP_SECRET_TYPE = "totp_seed"
+const AUDIT_LOG_PAGE_SIZE = 10
 
 function errorMessage(error: unknown, fallback: string) {
   return (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
@@ -301,6 +302,7 @@ export default function AccountDetailsPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [revealed, setRevealed] = useState<Record<string, string>>({})
+  const [auditLogLimit, setAuditLogLimit] = useState(AUDIT_LOG_PAGE_SIZE)
   const canViewAuditLog = user?.groups.includes("Admins") ?? false
 
   const accountQuery = useQuery({
@@ -310,8 +312,8 @@ export default function AccountDetailsPage() {
   })
 
   const auditLogsQuery = useQuery({
-    queryKey: ["accountAuditLogs", id],
-    queryFn: () => listAccountAuditLogs(id ?? ""),
+    queryKey: ["accountAuditLogs", id, auditLogLimit],
+    queryFn: () => listAccountAuditLogs(id ?? "", auditLogLimit),
     enabled: !!id && canViewAuditLog,
   })
 
@@ -667,6 +669,22 @@ export default function AccountDetailsPage() {
                     </div>
                   </div>
                 ))}
+                {(auditLogsQuery.data ?? []).length >= auditLogLimit && auditLogLimit < 100 && (
+                  <div className="border-t border-border/45 px-4 py-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={auditLogsQuery.isFetching}
+                      onClick={() =>
+                        setAuditLogLimit((current) => Math.min(current + AUDIT_LOG_PAGE_SIZE, 100))
+                      }
+                    >
+                      {auditLogsQuery.isFetching ? "Loading" : "Load more"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
