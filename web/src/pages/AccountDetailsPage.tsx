@@ -354,7 +354,7 @@ export default function AccountDetailsPage() {
             </div>
           ) : (
             <div>
-              <div className="hidden grid-cols-[minmax(180px,1fr)_160px_minmax(220px,1.4fr)_44px] border-b border-border/50 bg-muted/35 px-4 py-2 text-xs font-medium text-muted-foreground lg:grid">
+              <div className="hidden grid-cols-[minmax(180px,1fr)_160px_minmax(220px,1.4fr)_44px] border-b border-border/50 px-4 py-3 text-xs font-medium text-muted-foreground lg:grid">
                 <div>Secret</div>
                 <div>Type</div>
                 <div>Value</div>

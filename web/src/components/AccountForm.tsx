@@ -86,6 +86,15 @@ function GroupPicker({
     onChange(selectedGroups.filter((group) => group !== groupName))
   }
 
+  function toggleAdding() {
+    setIsAdding((current) => {
+      if (current) {
+        setSearch("")
+      }
+      return !current
+    })
+  }
+
   return (
     <div className="space-y-3">
       <Label>Sentinel groups</Label>
@@ -112,11 +121,16 @@ function GroupPicker({
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => setIsAdding((current) => !current)}
+          onClick={toggleAdding}
           aria-expanded={isAdding}
+          className="min-w-24 transition-colors duration-200"
         >
-          <Plus className="size-3.5" />
-          Add
+          <Plus
+            className={`size-3.5 transition-transform duration-200 ${
+              isAdding ? "rotate-45" : ""
+            }`}
+          />
+          {isAdding ? "Cancel" : "Add"}
         </Button>
       </div>
 
