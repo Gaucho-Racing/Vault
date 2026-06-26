@@ -52,6 +52,17 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/secrets/totp/qr", DecodeTOTPRegistrationQRCode)
 
+	router.GET("/app-secrets", ListApplications)
+	router.POST("/app-secrets", CreateApplication)
+	router.GET("/app-secrets/:id", GetApplication)
+	router.PUT("/app-secrets/:id", UpdateApplication)
+	router.DELETE("/app-secrets/:id", DeleteApplication)
+	router.GET("/app-secrets/:id/env", DownloadApplicationEnvFile)
+	router.POST("/app-secrets/:id/secrets", CreateApplicationSecret)
+	router.PUT("/app-secrets/:id/secrets/:secretID", UpdateApplicationSecret)
+	router.DELETE("/app-secrets/:id/secrets/:secretID", DeleteApplicationSecret)
+	router.POST("/app-secrets/:id/secrets/:secretID/reveal", RevealApplicationSecret)
+
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)
 	router.GET("/accounts/:id", GetAccount)
@@ -194,6 +205,22 @@ func RequestTokenCanAccessAccount(c *gin.Context, account model.Account) bool {
 		return true
 	}
 	return RequestTokenHasAnyGroupName(c, account.AccessGroupNames)
+}
+
+func RequestTokenCanAccessApplication(c *gin.Context, application model.Application) bool {
+	if !RequestTokenExists(c) {
+		return false
+	}
+	if RequestTokenHasScope(c, "sentinel:all") {
+		return true
+	}
+	if RequestTokenHasGroupName(c, "Admins") {
+		return true
+	}
+	if len(application.AccessGroupNames) == 0 {
+		return true
+	}
+	return RequestTokenHasAnyGroupName(c, application.AccessGroupNames)
 }
 
 func RequestTokenCanViewAuditLogs(c *gin.Context) bool {

@@ -1,4 +1,4 @@
-import { KeyRound, LogOut, Menu, Settings } from "lucide-react"
+import { KeyRound, LogOut, Menu, Settings, SquareTerminal } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,11 +17,13 @@ import { cn } from "@/lib/utils"
 
 const mobileItems = [
   { to: "/accounts", label: "Accounts", icon: KeyRound },
+  { to: "/app-secrets", label: "App Secrets", icon: SquareTerminal },
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 
 function sectionTitle(pathname: string) {
   if (pathname.startsWith("/settings")) return "Settings"
+  if (pathname.startsWith("/app-secrets")) return "App Secrets"
   if (pathname.startsWith("/accounts/new")) return "New Account"
   if (pathname.startsWith("/accounts")) return "Accounts"
   return "Vault"

@@ -76,11 +76,43 @@ export type AuditLog = {
   actor?: AuditActor
 }
 
+export type AppSecretApplication = {
+  id: string
+  name: string
+  access_group_names: string[]
+  created_by_entity_id: string
+  updated_by_entity_id: string
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type AccountWithSecrets = Account & {
   secrets: Secret[]
 }
 
+export type AppSecret = {
+  id: string
+  application_id: string
+  key: string
+  key_id: string
+  algorithm: string
+  created_by_entity_id: string
+  updated_by_entity_id: string
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AppSecretApplicationWithSecrets = AppSecretApplication & {
+  secrets: AppSecret[]
+}
+
 export type AccountListItem = Account & {
+  secret_count: number
+}
+
+export type AppSecretApplicationListItem = AppSecretApplication & {
   secret_count: number
 }
 
@@ -88,6 +120,11 @@ export type AccountInput = {
   name: string
   description: string
   url: string
+  access_group_names: string[]
+}
+
+export type AppSecretApplicationInput = {
+  name: string
   access_group_names: string[]
 }
 
@@ -112,6 +149,11 @@ export type SecretInput = {
   plain_value: string
 }
 
+export type AppSecretInput = {
+  value: string
+  key: string
+}
+
 export const commonSecretTypes = [
   "username",
   "email",
@@ -127,6 +169,58 @@ export const commonSecretTypes = [
 
 export async function listAccounts() {
   const response = await api.get<AccountListItem[]>("/accounts")
+  return response.data
+}
+
+export async function listAppSecretApplications() {
+  const response = await api.get<AppSecretApplicationListItem[]>("/app-secrets")
+  return response.data
+}
+
+export async function createAppSecretApplication(input: AppSecretApplicationInput) {
+  const response = await api.post<AppSecretApplication>("/app-secrets", input)
+  return response.data
+}
+
+export async function getAppSecretApplication(id: string) {
+  const response = await api.get<AppSecretApplicationWithSecrets>(`/app-secrets/${id}`)
+  return response.data
+}
+
+export async function updateAppSecretApplication(id: string, input: AppSecretApplicationInput) {
+  const response = await api.put<AppSecretApplication>(`/app-secrets/${id}`, input)
+  return response.data
+}
+
+export async function deleteAppSecretApplication(id: string) {
+  await api.delete(`/app-secrets/${id}`)
+}
+
+export async function createAppSecret(applicationID: string, input: AppSecretInput) {
+  const response = await api.post<AppSecret>(`/app-secrets/${applicationID}/secrets`, input)
+  return response.data
+}
+
+export async function updateAppSecret(applicationID: string, secretID: string, input: AppSecretInput) {
+  const response = await api.put<AppSecret>(`/app-secrets/${applicationID}/secrets/${secretID}`, input)
+  return response.data
+}
+
+export async function deleteAppSecret(applicationID: string, secretID: string) {
+  await api.delete(`/app-secrets/${applicationID}/secrets/${secretID}`)
+}
+
+export async function revealAppSecret(applicationID: string, secretID: string) {
+  const response = await api.post<{ value: string }>(
+    `/app-secrets/${applicationID}/secrets/${secretID}/reveal`,
+  )
+  return response.data.value
+}
+
+export async function downloadAppSecretEnvFile(applicationID: string) {
+  const response = await api.get<Blob>(`/app-secrets/${applicationID}/env`, {
+    responseType: "blob",
+  })
   return response.data
 }
 

@@ -36,6 +36,8 @@ func Init() {
 		&model.Secret{},
 		&model.VaultKey{},
 		&model.AuditLog{},
+		&model.Application{},
+		&model.AppSecret{},
 	); err != nil {
 		logger.SugarLogger.Fatalf("failed to run database migrations: %v", err)
 		return
