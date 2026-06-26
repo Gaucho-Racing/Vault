@@ -78,6 +78,8 @@ export type AppSecretApplication = {
   id: string
   name: string
   access_group_names: string[]
+  github_actions_repositories: string[]
+  github_actions_refs: string[]
   created_by_entity_id: string
   updated_by_entity_id: string
   created_at: string
@@ -124,6 +126,8 @@ export type AccountInput = {
 export type AppSecretApplicationInput = {
   name: string
   access_group_names: string[]
+  github_actions_repositories: string[]
+  github_actions_refs: string[]
 }
 
 export type SentinelGroup = {
@@ -165,6 +169,25 @@ export const commonSecretTypes = [
   "note",
 ]
 
+type AppSecretApplicationResponseFields = {
+  access_group_names?: string[] | null
+  github_actions_repositories?: string[] | null
+  github_actions_refs?: string[] | null
+}
+
+function normalizeStringArray(value: string[] | null | undefined) {
+  return Array.isArray(value) ? value : []
+}
+
+function normalizeAppSecretApplication<T extends AppSecretApplicationResponseFields>(application: T) {
+  return {
+    ...application,
+    access_group_names: normalizeStringArray(application.access_group_names),
+    github_actions_repositories: normalizeStringArray(application.github_actions_repositories),
+    github_actions_refs: normalizeStringArray(application.github_actions_refs),
+  }
+}
+
 export async function listAccounts() {
   const response = await api.get<AccountListItem[]>("/accounts")
   return response.data
@@ -172,22 +195,22 @@ export async function listAccounts() {
 
 export async function listAppSecretApplications() {
   const response = await api.get<AppSecretApplicationListItem[]>("/app-secrets")
-  return response.data
+  return response.data.map(normalizeAppSecretApplication)
 }
 
 export async function createAppSecretApplication(input: AppSecretApplicationInput) {
   const response = await api.post<AppSecretApplication>("/app-secrets", input)
-  return response.data
+  return normalizeAppSecretApplication(response.data)
 }
 
 export async function getAppSecretApplication(id: string) {
   const response = await api.get<AppSecretApplicationWithSecrets>(`/app-secrets/${id}`)
-  return response.data
+  return normalizeAppSecretApplication(response.data)
 }
 
 export async function updateAppSecretApplication(id: string, input: AppSecretApplicationInput) {
   const response = await api.put<AppSecretApplication>(`/app-secrets/${id}`, input)
-  return response.data
+  return normalizeAppSecretApplication(response.data)
 }
 
 export async function deleteAppSecretApplication(id: string) {

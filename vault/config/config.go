@@ -24,6 +24,9 @@ var SentinelClientSecret = os.Getenv("SENTINEL_CLIENT_SECRET")
 var SentinelSAToken = os.Getenv("SENTINEL_SA_TOKEN")
 var SentinelRedirectURI = os.Getenv("SENTINEL_REDIRECT_URI")
 
+var GitHubActionsOIDCIssuer = os.Getenv("GITHUB_ACTIONS_OIDC_ISSUER")
+var GitHubActionsOIDCAudience = os.Getenv("GITHUB_ACTIONS_OIDC_AUDIENCE")
+
 var VaultMasterKey = os.Getenv("VAULT_MASTER_KEY")
 var VaultMasterKeyID = os.Getenv("VAULT_MASTER_KEY_ID")
 

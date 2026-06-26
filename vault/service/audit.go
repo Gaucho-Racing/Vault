@@ -28,7 +28,11 @@ func RecordAuditLog(auditLog model.AuditLog) error {
 }
 
 func RecordAccountViewAuditLog(auditLog model.AuditLog, window time.Duration) error {
-	return recordAccountViewAuditLog(database.DB, auditLog, window)
+	return recordViewAuditLog(database.DB, auditLog, window)
+}
+
+func RecordViewAuditLog(auditLog model.AuditLog, window time.Duration) error {
+	return recordViewAuditLog(database.DB, auditLog, window)
 }
 
 func GetAuditLogsForAccount(accountID string, limit int) ([]model.AuditLog, error) {
@@ -51,7 +55,7 @@ func GetAuditLogsForAccount(accountID string, limit int) ([]model.AuditLog, erro
 	return auditLogs, nil
 }
 
-func recordAccountViewAuditLog(db *gorm.DB, auditLog model.AuditLog, window time.Duration) error {
+func recordViewAuditLog(db *gorm.DB, auditLog model.AuditLog, window time.Duration) error {
 	if window <= 0 {
 		return recordAuditLog(db, auditLog)
 	}
@@ -67,14 +71,7 @@ func recordAccountViewAuditLog(db *gorm.DB, auditLog model.AuditLog, window time
 	}
 
 	var count int64
-	if err := db.Model(&model.AuditLog{}).
-		Where(
-			"action = ? AND account_id = ? AND actor_entity_id = ? AND created_at >= ?",
-			auditLog.Action,
-			auditLog.AccountID,
-			auditLog.ActorEntityID,
-			time.Now().Add(-window),
-		).
+	if err := recentViewAuditLogQuery(db, auditLog, time.Now().Add(-window)).
 		Count(&count).Error; err != nil {
 		return err
 	}
@@ -82,6 +79,17 @@ func recordAccountViewAuditLog(db *gorm.DB, auditLog model.AuditLog, window time
 		return nil
 	}
 	return recordAuditLog(db, auditLog)
+}
+
+func recentViewAuditLogQuery(db *gorm.DB, auditLog model.AuditLog, since time.Time) *gorm.DB {
+	return db.Model(&model.AuditLog{}).
+		Where(
+			"action = ? AND account_id = ? AND actor_entity_id = ? AND created_at >= ?",
+			auditLog.Action,
+			auditLog.AccountID,
+			auditLog.ActorEntityID,
+			since,
+		).Where("secret_id = ?", auditLog.SecretID)
 }
 
 func recordAuditLog(db *gorm.DB, auditLog model.AuditLog) error {

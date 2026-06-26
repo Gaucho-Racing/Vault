@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/gaucho-racing/vault/vault/model"
 	"github.com/gaucho-racing/vault/vault/service"
@@ -56,7 +55,7 @@ func GetAccount(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account.Account))
-	if err := service.RecordAccountViewAuditLog(newAccountAuditLog(c, service.AuditActionAccountViewed, account.Account), 2*time.Minute); err != nil {
+	if err := service.RecordAccountViewAuditLog(newAccountAuditLog(c, service.AuditActionAccountViewed, account.Account), auditViewDebounceWindow); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

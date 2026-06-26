@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
@@ -9,11 +11,19 @@ import (
 	"github.com/gaucho-racing/ulid-go"
 	"github.com/gaucho-racing/vault/vault/database"
 	"github.com/gaucho-racing/vault/vault/model"
+	"github.com/gaucho-racing/vault/vault/pkg/githubactions"
 	"gorm.io/gorm"
 )
 
 var ErrApplicationNameRequired = errors.New("application name is required")
 var ErrApplicationNameInvalid = errors.New("application name must contain only lowercase letters, numbers, hyphens, and underscores")
+var ErrGitHubActionsRepositoryRequired = errors.New("github actions repository is required when refs are configured")
+var ErrGitHubActionsRefRequired = errors.New("github actions ref is required when repositories are configured")
+var ErrGitHubActionsRepositoryInvalid = errors.New("github actions repository must use owner/repo format")
+var ErrGitHubActionsRefInvalid = errors.New("github actions ref must start with refs/ and cannot contain whitespace")
+var ErrGitHubActionsRepositoryNotAllowed = errors.New("github actions repository is not allowed for this application")
+var ErrGitHubActionsRefNotAllowed = errors.New("github actions ref is not allowed for this application")
+var ErrGitHubActionsEnvNameCollision = errors.New("github actions environment variable name collision")
 var ErrAppSecretKeyRequired = errors.New("app secret key is required")
 var ErrAppSecretKeyInvalid = errors.New("app secret key must contain only lowercase letters, numbers, hyphens, and underscores")
 var ErrAppSecretValueRequired = errors.New("app secret value is required")
@@ -34,6 +44,8 @@ type applicationSecretCount struct {
 }
 
 var appSecretIdentifierPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+var githubRepositoryPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*$`)
+var whitespacePattern = regexp.MustCompile(`\s`)
 
 func GetAllApplications() ([]ApplicationWithSecretCount, error) {
 	applications := []model.Application{}
@@ -66,6 +78,14 @@ func GetAllApplications() ([]ApplicationWithSecretCount, error) {
 func GetApplicationByID(id string) (model.Application, error) {
 	var application model.Application
 	if err := database.DB.Where("id = ?", id).First(&application).Error; err != nil {
+		return model.Application{}, err
+	}
+	return application, nil
+}
+
+func GetApplicationByName(name string) (model.Application, error) {
+	var application model.Application
+	if err := database.DB.Where("name = ?", strings.ToLower(strings.TrimSpace(name))).First(&application).Error; err != nil {
 		return model.Application{}, err
 	}
 	return application, nil
@@ -209,6 +229,41 @@ func BuildApplicationEnvFile(applicationID string) (string, error) {
 	return builder.String(), nil
 }
 
+func BuildApplicationGitHubActionsEnvFile(applicationName string, claims githubactions.Claims) (string, error) {
+	application, err := GetApplicationByName(applicationName)
+	if err != nil {
+		return "", err
+	}
+	if err := authorizeGitHubActionsApplicationAccess(application, claims); err != nil {
+		return "", err
+	}
+	return BuildGitHubActionsEnvFile(application.ID)
+}
+
+func BuildGitHubActionsEnvFile(applicationID string) (string, error) {
+	secrets, err := GetAppSecretsForApplication(applicationID)
+	if err != nil {
+		return "", err
+	}
+
+	secretKeysByEnvName := map[string]string{}
+	var builder strings.Builder
+	for _, secret := range secrets {
+		name := githubActionsEnvName(secret.Key)
+		if existingKey, exists := secretKeysByEnvName[name]; exists {
+			return "", fmt.Errorf("%w: %s and %s both map to %s", ErrGitHubActionsEnvNameCollision, existingKey, secret.Key, name)
+		}
+		secretKeysByEnvName[name] = secret.Key
+
+		value, err := RevealAppSecret(secret)
+		if err != nil {
+			return "", fmt.Errorf("reveal app secret %s: %w", secret.Key, err)
+		}
+		builder.WriteString(formatGitHubActionsEnvAssignment(name, value))
+	}
+	return builder.String(), nil
+}
+
 func getAppSecretCountsByApplicationID(applicationIDs []string) (map[string]int64, error) {
 	countsByApplicationID := make(map[string]int64, len(applicationIDs))
 	if len(applicationIDs) == 0 {
@@ -234,11 +289,29 @@ func getAppSecretCountsByApplicationID(applicationIDs []string) (map[string]int6
 func normalizeApplication(application *model.Application) error {
 	application.Name = strings.ToLower(strings.TrimSpace(application.Name))
 	application.AccessGroupNames = normalizeStringSlice(application.AccessGroupNames)
+	application.GitHubActionsRepositories = normalizeGitHubRepositories(application.GitHubActionsRepositories)
+	application.GitHubActionsRefs = normalizeStringSlice(application.GitHubActionsRefs)
 	if application.Name == "" {
 		return ErrApplicationNameRequired
 	}
 	if !appSecretIdentifierPattern.MatchString(application.Name) {
 		return ErrApplicationNameInvalid
+	}
+	if len(application.GitHubActionsRefs) > 0 && len(application.GitHubActionsRepositories) == 0 {
+		return ErrGitHubActionsRepositoryRequired
+	}
+	if len(application.GitHubActionsRepositories) > 0 && len(application.GitHubActionsRefs) == 0 {
+		return ErrGitHubActionsRefRequired
+	}
+	for _, repository := range application.GitHubActionsRepositories {
+		if !githubRepositoryPattern.MatchString(repository) {
+			return ErrGitHubActionsRepositoryInvalid
+		}
+	}
+	for _, ref := range application.GitHubActionsRefs {
+		if !strings.HasPrefix(ref, "refs/") || whitespacePattern.MatchString(ref) {
+			return ErrGitHubActionsRefInvalid
+		}
 	}
 	return nil
 }
@@ -298,4 +371,98 @@ func formatEnvValue(value string) string {
 		"\n", `\n`,
 	)
 	return `"` + replacer.Replace(value) + `"`
+}
+
+func authorizeGitHubActionsApplicationAccess(application model.Application, claims githubactions.Claims) error {
+	if !stringSliceContainsFold(application.GitHubActionsRepositories, claims.Repository) {
+		return ErrGitHubActionsRepositoryNotAllowed
+	}
+	for _, refPattern := range application.GitHubActionsRefs {
+		if wildcardMatches(refPattern, claims.Ref) {
+			return nil
+		}
+	}
+	return ErrGitHubActionsRefNotAllowed
+}
+
+func normalizeGitHubRepositories(repositories []string) []string {
+	normalized := make([]string, 0, len(repositories))
+	seen := map[string]bool{}
+	for _, repository := range repositories {
+		value := strings.ToLower(strings.TrimSpace(repository))
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		normalized = append(normalized, value)
+	}
+	return normalized
+}
+
+func stringSliceContainsFold(values []string, candidate string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func wildcardMatches(pattern string, value string) bool {
+	parts := strings.Split(pattern, "*")
+	if len(parts) == 1 {
+		return pattern == value
+	}
+
+	position := 0
+	if parts[0] != "" {
+		if !strings.HasPrefix(value, parts[0]) {
+			return false
+		}
+		position = len(parts[0])
+	}
+
+	for _, part := range parts[1 : len(parts)-1] {
+		index := strings.Index(value[position:], part)
+		if index < 0 {
+			return false
+		}
+		position += index + len(part)
+	}
+
+	last := parts[len(parts)-1]
+	return last == "" || strings.HasSuffix(value[position:], last)
+}
+
+func githubActionsEnvName(key string) string {
+	var builder strings.Builder
+	for _, value := range strings.ToUpper(key) {
+		if (value >= 'A' && value <= 'Z') || (value >= '0' && value <= '9') || value == '_' {
+			builder.WriteRune(value)
+		} else {
+			builder.WriteByte('_')
+		}
+	}
+	name := builder.String()
+	if name == "" {
+		return "SECRET"
+	}
+	if name[0] >= '0' && name[0] <= '9' {
+		return "_" + name
+	}
+	return name
+}
+
+func formatGitHubActionsEnvAssignment(name string, value string) string {
+	delimiter := githubActionsDelimiter(name, value)
+	return name + "<<" + delimiter + "\n" + value + "\n" + delimiter + "\n"
+}
+
+func githubActionsDelimiter(name string, value string) string {
+	hash := sha256.Sum256([]byte(name + "\x00" + value))
+	delimiter := "VAULT_" + strings.ToUpper(hex.EncodeToString(hash[:8]))
+	for suffix := 1; strings.Contains(value, delimiter); suffix++ {
+		delimiter = fmt.Sprintf("VAULT_%s_%d", strings.ToUpper(hex.EncodeToString(hash[:8])), suffix)
+	}
+	return delimiter
 }

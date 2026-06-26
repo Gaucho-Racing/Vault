@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import { AppSecretApplicationForm } from "@/components/AppSecretApplicationForm"
 import { AppSecretFormDialog } from "@/components/AppSecretFormDialog"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { GithubIcon } from "@/components/icons/socials"
 import { PageContainer } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -369,7 +370,7 @@ export default function AppSecretApplicationDetailsPage() {
                 <h1 className="truncate font-mono text-2xl font-semibold">{application.name}</h1>
               </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:w-[420px]">
+            <div className="grid gap-2 sm:grid-cols-3 lg:w-[620px]">
               <div className="rounded-lg bg-muted/45 p-3 dark:bg-muted/35">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <UsersRound className="size-3.5" />
@@ -392,6 +393,19 @@ export default function AppSecretApplicationDetailsPage() {
                   {formatDate(application.updated_at)}
                 </div>
               </div>
+              <div className="rounded-lg bg-muted/45 p-3 dark:bg-muted/35">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <GithubIcon className="size-3.5" />
+                  Actions
+                </div>
+                <div className="mt-1 truncate text-sm font-medium">
+                  {application.github_actions_repositories.length === 0
+                    ? "Disabled"
+                    : `${application.github_actions_repositories.length} repo${
+                        application.github_actions_repositories.length === 1 ? "" : "s"
+                      }`}
+                </div>
+              </div>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border/50 pt-4">
@@ -404,6 +418,16 @@ export default function AppSecretApplicationDetailsPage() {
                 </Badge>
               ))
             )}
+            {application.github_actions_repositories.map((repository) => (
+              <Badge key={`repo-${repository}`} variant="secondary">
+                {repository}
+              </Badge>
+            ))}
+            {application.github_actions_refs.map((ref) => (
+              <Badge key={`ref-${ref}`} variant="outline">
+                {ref}
+              </Badge>
+            ))}
           </div>
         </div>
       </div>

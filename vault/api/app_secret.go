@@ -11,8 +11,10 @@ import (
 )
 
 type applicationRequest struct {
-	Name             string   `json:"name" binding:"required"`
-	AccessGroupNames []string `json:"access_group_names"`
+	Name                      string   `json:"name" binding:"required"`
+	AccessGroupNames          []string `json:"access_group_names"`
+	GitHubActionsRepositories []string `json:"github_actions_repositories"`
+	GitHubActionsRefs         []string `json:"github_actions_refs"`
 }
 
 type appSecretRequest struct {
@@ -65,10 +67,12 @@ func CreateApplication(c *gin.Context) {
 		return
 	}
 	application, err := service.CreateApplication(model.Application{
-		Name:              req.Name,
-		AccessGroupNames:  req.AccessGroupNames,
-		CreatedByEntityID: GetRequestEntityID(c),
-		UpdatedByEntityID: GetRequestEntityID(c),
+		Name:                      req.Name,
+		AccessGroupNames:          req.AccessGroupNames,
+		GitHubActionsRepositories: req.GitHubActionsRepositories,
+		GitHubActionsRefs:         req.GitHubActionsRefs,
+		CreatedByEntityID:         GetRequestEntityID(c),
+		UpdatedByEntityID:         GetRequestEntityID(c),
 	})
 	if err != nil {
 		handleApplicationError(c, err)
@@ -97,6 +101,8 @@ func UpdateApplication(c *gin.Context) {
 	}
 	application.Name = req.Name
 	application.AccessGroupNames = req.AccessGroupNames
+	application.GitHubActionsRepositories = req.GitHubActionsRepositories
+	application.GitHubActionsRefs = req.GitHubActionsRefs
 	application.UpdatedByEntityID = GetRequestEntityID(c)
 
 	updated, err := service.UpdateApplication(application)
@@ -283,7 +289,11 @@ func DownloadApplicationEnvFile(c *gin.Context) {
 
 func handleApplicationError(c *gin.Context, err error) {
 	if errors.Is(err, service.ErrApplicationNameRequired) ||
-		errors.Is(err, service.ErrApplicationNameInvalid) {
+		errors.Is(err, service.ErrApplicationNameInvalid) ||
+		errors.Is(err, service.ErrGitHubActionsRepositoryRequired) ||
+		errors.Is(err, service.ErrGitHubActionsRefRequired) ||
+		errors.Is(err, service.ErrGitHubActionsRepositoryInvalid) ||
+		errors.Is(err, service.ErrGitHubActionsRefInvalid) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

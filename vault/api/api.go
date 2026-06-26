@@ -43,6 +43,8 @@ func InitializeRouter() *gin.Engine {
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 
+	router.POST("/integrations/github/actions/app-secrets/:name/env", ExportGitHubActionsApplicationEnv)
+
 	router.POST("/auth/login", LoginWithSentinel)
 	router.GET("/auth/session", GetSession)
 	router.POST("/auth/refresh", RefreshSession)
@@ -108,7 +110,8 @@ func AuthChecker() gin.HandlerFunc {
 func authRouteSkipsTokenValidation(path string) bool {
 	return path == "/auth/login" ||
 		path == "/auth/refresh" ||
-		path == "/auth/logout"
+		path == "/auth/logout" ||
+		strings.HasPrefix(path, "/integrations/github/actions/")
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {

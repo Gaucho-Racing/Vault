@@ -24,9 +24,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth"
 import {
+  commonSecretTypes,
   createSecret,
   deleteAccount,
   deleteSecret,
@@ -78,6 +86,11 @@ async function copyValue(value: string) {
 
 function isTOTPSecret(secret: Secret) {
   return secret.type.trim().toLowerCase() === TOTP_SECRET_TYPE
+}
+
+function isDialogRevealSecret(secret: Secret) {
+  const normalizedType = secret.type.trim().toLowerCase()
+  return normalizedType === "note" || (normalizedType !== "" && !commonSecretTypes.includes(normalizedType))
 }
 
 function formatTOTPCode(code: string) {
@@ -224,15 +237,17 @@ function SecretValue({
   onReveal,
   onCopy,
   onHide,
+  onView,
 }: {
   accountID: string
   secret: Secret
   revealed?: string
   revealing: boolean
   copying: boolean
-  onReveal: (accountID: string, secretID: string) => void
+  onReveal: (accountID: string, secret: Secret) => void
   onCopy: (accountID: string, secretID: string) => void
   onHide: (secretID: string) => void
+  onView: (secret: Secret) => void
 }) {
   if (isTOTPSecret(secret)) {
     return <TOTPSecretValue accountID={accountID} secret={secret} />
@@ -255,6 +270,21 @@ function SecretValue({
   }
 
   if (revealed !== undefined) {
+    if (isDialogRevealSecret(secret)) {
+      return (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" onClick={() => void copyValue(revealed)}>
+            <Copy className="size-3.5" />
+            Copy
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onView(secret)}>
+            <Eye className="size-3.5" />
+            Reveal
+          </Button>
+        </div>
+      )
+    }
+
     return (
       <div className="flex min-w-0 items-center gap-2">
         <code className="min-w-0 truncate rounded-md bg-muted px-2.5 py-1.5 text-xs">
@@ -287,12 +317,61 @@ function SecretValue({
         variant="secondary"
         size="sm"
         disabled={revealing}
-        onClick={() => onReveal(accountID, secret.id)}
+        onClick={() => onReveal(accountID, secret)}
       >
         <Eye className="size-3.5" />
         {revealing ? "Revealing" : "Reveal"}
       </Button>
     </div>
+  )
+}
+
+function SecretRevealDialog({
+  secret,
+  value,
+  open,
+  onOpenChange,
+}: {
+  secret?: Secret
+  value?: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  if (!secret) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{secret.label || secret.key}</DialogTitle>
+        </DialogHeader>
+        {secret.type && (
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="outline">{secret.type}</Badge>
+            <Badge
+              variant="outline"
+              className="border-transparent bg-gr-pink/10 text-gr-pink dark:bg-gr-pink/20"
+            >
+              Sensitive
+            </Badge>
+          </div>
+        )}
+        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap wrap-anywhere rounded-lg bg-muted p-3 font-mono text-sm leading-6">
+          {value === "" ? "empty" : value}
+        </pre>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={value === undefined}
+            onClick={() => void copyValue(value ?? "")}
+          >
+            <Copy className="size-4" />
+            Copy
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -302,6 +381,7 @@ export default function AccountDetailsPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [revealed, setRevealed] = useState<Record<string, string>>({})
+  const [dialogSecretID, setDialogSecretID] = useState<string | null>(null)
   const [auditLogLimit, setAuditLogLimit] = useState(AUDIT_LOG_PAGE_SIZE)
   const canViewAuditLog = user?.groups.includes("Admins") ?? false
 
@@ -362,6 +442,10 @@ export default function AccountDetailsPage() {
       revealSecret(accountID, secretID),
     onSuccess: (value, variables) => {
       setRevealed((current) => ({ ...current, [variables.secretID]: value }))
+      const secret = accountQuery.data?.secrets.find((item) => item.id === variables.secretID)
+      if (secret && isDialogRevealSecret(secret)) {
+        setDialogSecretID(secret.id)
+      }
     },
     onError: (error) => toast.error(errorMessage(error, "Failed to reveal secret")),
   })
@@ -376,6 +460,7 @@ export default function AccountDetailsPage() {
   })
 
   const account = accountQuery.data
+  const dialogSecret = account?.secrets.find((secret) => secret.id === dialogSecretID)
 
   if (accountQuery.isLoading) {
     return (
@@ -569,7 +654,9 @@ export default function AccountDetailsPage() {
                       copySensitiveSecretMutation.isPending &&
                       copySensitiveSecretMutation.variables?.secretID === secret.id
                     }
-                    onReveal={(accountID, secretID) => revealMutation.mutate({ accountID, secretID })}
+                    onReveal={(accountID, secret) =>
+                      revealMutation.mutate({ accountID, secretID: secret.id })
+                    }
                     onCopy={(accountID, secretID) =>
                       copySensitiveSecretMutation.mutate({ accountID, secretID })
                     }
@@ -577,9 +664,13 @@ export default function AccountDetailsPage() {
                       setRevealed((current) => {
                         const next = { ...current }
                         delete next[secretID]
+                        if (dialogSecretID === secretID) {
+                          setDialogSecretID(null)
+                        }
                         return next
                       })
                     }
+                    onView={(secret) => setDialogSecretID(secret.id)}
                   />
                   <ConfirmDialog
                     title="Delete secret"
@@ -604,6 +695,15 @@ export default function AccountDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      <SecretRevealDialog
+        secret={dialogSecret}
+        value={dialogSecret ? revealed[dialogSecret.id] : undefined}
+        open={!!dialogSecret}
+        onOpenChange={(open) => {
+          if (!open) setDialogSecretID(null)
+        }}
+      />
 
       {canViewAuditLog && (
         <Card className="mt-4">
