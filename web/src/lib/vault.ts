@@ -8,7 +8,6 @@ export type Account = {
   access_group_names: string[]
   created_by_entity_id: string
   updated_by_entity_id: string
-  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -25,7 +24,6 @@ export type Secret = {
   algorithm: string
   created_by_entity_id: string
   updated_by_entity_id: string
-  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -82,7 +80,6 @@ export type AppSecretApplication = {
   access_group_names: string[]
   created_by_entity_id: string
   updated_by_entity_id: string
-  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -99,7 +96,6 @@ export type AppSecret = {
   algorithm: string
   created_by_entity_id: string
   updated_by_entity_id: string
-  deleted_at: string | null
   created_at: string
   updated_at: string
 }
