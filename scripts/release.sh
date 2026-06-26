@@ -69,7 +69,7 @@ fi
 SEMVER="$INPUT"
 VERSION="v${INPUT}"
 TAG="$VERSION"
-IMAGES=("vault" "vault-web")
+IMAGES=("vault-server" "vault-web")
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
