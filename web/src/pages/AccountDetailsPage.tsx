@@ -562,8 +562,13 @@ export default function AccountDetailsPage() {
                     accountID={account.id}
                     secret={secret}
                     revealed={revealed[secret.id]}
-                    revealing={revealMutation.isPending}
-                    copying={copySensitiveSecretMutation.isPending}
+                    revealing={
+                      revealMutation.isPending && revealMutation.variables?.secretID === secret.id
+                    }
+                    copying={
+                      copySensitiveSecretMutation.isPending &&
+                      copySensitiveSecretMutation.variables?.secretID === secret.id
+                    }
                     onReveal={(accountID, secretID) => revealMutation.mutate({ accountID, secretID })}
                     onCopy={(accountID, secretID) =>
                       copySensitiveSecretMutation.mutate({ accountID, secretID })

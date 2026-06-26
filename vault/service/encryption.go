@@ -22,57 +22,89 @@ var ErrSensitiveSecretValueMissing = errors.New("sensitive secret has no encrypt
 var ErrVaultMasterKeyInvalid = errors.New("vault master key is invalid")
 var ErrUnsupportedSecretEncryptionAlgorithm = errors.New("unsupported secret encryption algorithm")
 
+type encryptedSecretValue struct {
+	Ciphertext       []byte
+	Nonce            []byte
+	EncryptedDataKey []byte
+	KeyID            string
+	Algorithm        string
+}
+
 func encryptSecretValue(secret *model.Secret) error {
-	if secret.PlainValue == "" {
-		return ErrSensitiveSecretValueRequired
+	encryptedValue, err := encryptPlainValue(secret.PlainValue, secretAssociatedData(*secret))
+	if err != nil {
+		return err
+	}
+	secret.Ciphertext = encryptedValue.Ciphertext
+	secret.Nonce = encryptedValue.Nonce
+	secret.EncryptedDataKey = encryptedValue.EncryptedDataKey
+	secret.KeyID = encryptedValue.KeyID
+	secret.Algorithm = encryptedValue.Algorithm
+	secret.PlainValue = ""
+	return nil
+}
+
+func decryptSecretValue(secret model.Secret) (string, error) {
+	return decryptPlainValue(encryptedSecretValue{
+		Ciphertext:       secret.Ciphertext,
+		Nonce:            secret.Nonce,
+		EncryptedDataKey: secret.EncryptedDataKey,
+		KeyID:            secret.KeyID,
+		Algorithm:        secret.Algorithm,
+	}, secretAssociatedData(secret))
+}
+
+func encryptPlainValue(plainValue string, associatedData []byte) (encryptedSecretValue, error) {
+	if plainValue == "" {
+		return encryptedSecretValue{}, ErrSensitiveSecretValueRequired
 	}
 	masterKey, err := loadVaultMasterKey()
 	if err != nil {
-		return err
+		return encryptedSecretValue{}, err
 	}
 	defer zeroBytes(masterKey)
 
 	dataKey := make([]byte, secretDataKeySize)
 	defer zeroBytes(dataKey)
 	if _, err := io.ReadFull(rand.Reader, dataKey); err != nil {
-		return fmt.Errorf("generate secret data key: %w", err)
+		return encryptedSecretValue{}, fmt.Errorf("generate secret data key: %w", err)
 	}
 
 	aead, err := newAESGCM(dataKey)
 	if err != nil {
-		return err
+		return encryptedSecretValue{}, err
 	}
 	nonce, err := randomBytes(aead.NonceSize())
 	if err != nil {
-		return err
+		return encryptedSecretValue{}, err
 	}
 	wrappedDataKey, err := wrapDataKey(masterKey, dataKey, config.VaultMasterKeyID)
 	if err != nil {
-		return err
+		return encryptedSecretValue{}, err
 	}
 
-	secret.Ciphertext = aead.Seal(nil, nonce, []byte(secret.PlainValue), secretAssociatedData(*secret))
-	secret.Nonce = nonce
-	secret.EncryptedDataKey = wrappedDataKey
-	secret.KeyID = config.VaultMasterKeyID
-	secret.Algorithm = secretEncryptionAlgorithm
-	secret.PlainValue = ""
-	return nil
+	return encryptedSecretValue{
+		Ciphertext:       aead.Seal(nil, nonce, []byte(plainValue), associatedData),
+		Nonce:            nonce,
+		EncryptedDataKey: wrappedDataKey,
+		KeyID:            config.VaultMasterKeyID,
+		Algorithm:        secretEncryptionAlgorithm,
+	}, nil
 }
 
-func decryptSecretValue(secret model.Secret) (string, error) {
-	if !hasEncryptedSecretValue(secret) {
+func decryptPlainValue(encryptedValue encryptedSecretValue, associatedData []byte) (string, error) {
+	if !hasEncryptedPlainValue(encryptedValue) {
 		return "", ErrSensitiveSecretValueMissing
 	}
-	if secret.Algorithm != secretEncryptionAlgorithm {
-		return "", fmt.Errorf("%w: %s", ErrUnsupportedSecretEncryptionAlgorithm, secret.Algorithm)
+	if encryptedValue.Algorithm != secretEncryptionAlgorithm {
+		return "", fmt.Errorf("%w: %s", ErrUnsupportedSecretEncryptionAlgorithm, encryptedValue.Algorithm)
 	}
 	masterKey, err := loadVaultMasterKey()
 	if err != nil {
 		return "", err
 	}
 	defer zeroBytes(masterKey)
-	dataKey, err := unwrapDataKey(masterKey, secret.EncryptedDataKey, secret.KeyID)
+	dataKey, err := unwrapDataKey(masterKey, encryptedValue.EncryptedDataKey, encryptedValue.KeyID)
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +114,7 @@ func decryptSecretValue(secret model.Secret) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	plaintext, err := aead.Open(nil, secret.Nonce, secret.Ciphertext, secretAssociatedData(secret))
+	plaintext, err := aead.Open(nil, encryptedValue.Nonce, encryptedValue.Ciphertext, associatedData)
 	if err != nil {
 		return "", fmt.Errorf("decrypt secret value: %w", err)
 	}
@@ -98,7 +130,15 @@ func clearEncryptedSecretValue(secret *model.Secret) {
 }
 
 func hasEncryptedSecretValue(secret model.Secret) bool {
-	return len(secret.Ciphertext) > 0 && len(secret.Nonce) > 0 && len(secret.EncryptedDataKey) > 0
+	return hasEncryptedPlainValue(encryptedSecretValue{
+		Ciphertext:       secret.Ciphertext,
+		Nonce:            secret.Nonce,
+		EncryptedDataKey: secret.EncryptedDataKey,
+	})
+}
+
+func hasEncryptedPlainValue(encryptedValue encryptedSecretValue) bool {
+	return len(encryptedValue.Ciphertext) > 0 && len(encryptedValue.Nonce) > 0 && len(encryptedValue.EncryptedDataKey) > 0
 }
 
 func loadVaultMasterKey() ([]byte, error) {

@@ -51,7 +51,7 @@ function AccessSummary({ restricted }: { restricted: boolean }) {
   )
 }
 
-function GroupPicker({
+export function GroupPicker({
   selectedGroups,
   onChange,
 }: {

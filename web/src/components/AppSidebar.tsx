@@ -1,10 +1,11 @@
-import { KeyRound, LockKeyhole, Settings } from "lucide-react"
+import { CodeXml, KeyRound, LockKeyhole, Settings } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { to: "/accounts", label: "Accounts", icon: LockKeyhole },
+  { to: "/app-secrets", label: "App Secrets", icon: CodeXml },
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 
