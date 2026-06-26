@@ -163,7 +163,7 @@ func UpdateSecret(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
-func ArchiveSecret(c *gin.Context) {
+func DeleteSecret(c *gin.Context) {
 	Require(c, RequestTokenExists(c))
 	account, err := service.GetAccountByID(c.Param("id"))
 	if err != nil {
@@ -176,7 +176,7 @@ func ArchiveSecret(c *gin.Context) {
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account))
 
-	if err := service.ArchiveSecret(c.Param("id"), c.Param("secretID"), GetRequestEntityID(c)); err != nil {
+	if err := service.DeleteSecret(c.Param("id"), c.Param("secretID"), GetRequestEntityID(c)); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "secret not found"})
 			return
@@ -184,7 +184,7 @@ func ArchiveSecret(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "secret archived"})
+	c.JSON(http.StatusOK, gin.H{"message": "secret deleted"})
 }
 
 func RevealSecret(c *gin.Context) {

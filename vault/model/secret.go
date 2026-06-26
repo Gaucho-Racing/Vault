@@ -17,7 +17,7 @@ type Secret struct {
 	Algorithm         string     `json:"algorithm"`
 	CreatedByEntityID string     `json:"created_by_entity_id" gorm:"index"`
 	UpdatedByEntityID string     `json:"updated_by_entity_id" gorm:"index"`
-	ArchivedAt        *time.Time `json:"archived_at" gorm:"index"`
+	DeletedAt         *time.Time `json:"deleted_at" gorm:"index"`
 	CreatedAt         time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt         time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }

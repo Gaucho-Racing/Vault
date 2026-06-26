@@ -13,6 +13,7 @@ services:
       KERBECS_CONFIG: /etc/kerbecs/kerbecs.yaml
     depends_on:
       - vault
+      - web
 
   vault:
     container_name: vault-vault
@@ -38,6 +39,22 @@ services:
       SENTINEL_CLIENT_ID: ${SENTINEL_CLIENT_ID}
       SENTINEL_CLIENT_SECRET: ${SENTINEL_CLIENT_SECRET}
       SENTINEL_SA_TOKEN: ${SENTINEL_SA_TOKEN}
+      SENTINEL_REDIRECT_URI: ${SENTINEL_REDIRECT_URI}
+
+  web:
+    container_name: vault-web
+    image: node:22-alpine
+    restart: always
+    working_dir: /app
+    command: >
+      sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./web:/app
+      - web_node_modules:/app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:10310
+      VITE_SENTINEL_URL: ${SENTINEL_URL}
+      VITE_SENTINEL_CLIENT_ID: ${SENTINEL_CLIENT_ID}
 
   db:
     container_name: vault-db
@@ -53,3 +70,4 @@ services:
 volumes:
   pgdata:
   vault_gopath:
+  web_node_modules:

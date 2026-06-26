@@ -33,7 +33,7 @@ func InitializeRouter() *gin.Engine {
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		MaxAge:           12 * time.Hour,
-		AllowCredentials: true,
+		AllowCredentials: false,
 	}))
 	r.Use(AuthChecker())
 	r.Use(UnauthorizedPanicHandler())
@@ -43,25 +43,40 @@ func InitializeRouter() *gin.Engine {
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 
+	router.POST("/auth/login", LoginWithSentinel)
+	router.GET("/auth/session", GetSession)
+	router.POST("/auth/refresh", RefreshSession)
+	router.POST("/auth/logout", Logout)
+	router.GET("/users/@me", GetCurrentUser)
+	router.GET("/groups", ListSentinelGroups)
+
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)
 	router.GET("/accounts/:id", GetAccount)
 	router.PUT("/accounts/:id", UpdateAccount)
-	router.DELETE("/accounts/:id", ArchiveAccount)
+	router.DELETE("/accounts/:id", DeleteAccount)
 
 	router.GET("/accounts/:id/secrets", ListSecrets)
 	router.POST("/accounts/:id/secrets", CreateSecret)
 	router.GET("/accounts/:id/secrets/:secretID", GetSecret)
 	router.PUT("/accounts/:id/secrets/:secretID", UpdateSecret)
-	router.DELETE("/accounts/:id/secrets/:secretID", ArchiveSecret)
+	router.DELETE("/accounts/:id/secrets/:secretID", DeleteSecret)
 	router.POST("/accounts/:id/secrets/:secretID/reveal", RevealSecret)
 }
 
 func AuthChecker() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if authRouteSkipsTokenValidation(c.Request.URL.Path) {
+			c.Next()
+			return
+		}
+
+		token := ""
 		authHeader := c.GetHeader("Authorization")
 		if strings.HasPrefix(authHeader, "Bearer ") {
-			token := strings.TrimPrefix(authHeader, "Bearer ")
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+		if token != "" {
 			claims, err := sentinel.ValidateToken(token)
 			if err != nil {
 				logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
@@ -73,6 +88,12 @@ func AuthChecker() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func authRouteSkipsTokenValidation(path string) bool {
+	return path == "/auth/login" ||
+		path == "/auth/refresh" ||
+		path == "/auth/logout"
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {
@@ -160,6 +181,9 @@ func RequestTokenCanAccessAccount(c *gin.Context, account model.Account) bool {
 		return false
 	}
 	if RequestTokenHasScope(c, "sentinel:all") {
+		return true
+	}
+	if RequestTokenHasGroupName(c, "Admins") {
 		return true
 	}
 	if len(account.AccessGroupNames) == 0 {
