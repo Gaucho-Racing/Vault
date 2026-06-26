@@ -18,6 +18,11 @@ type accountRequest struct {
 	AccessGroupNames []string `json:"access_group_names"`
 }
 
+type accountListItem struct {
+	service.AccountWithSecretCount
+	CanAccess bool `json:"can_access"`
+}
+
 func ListAccounts(c *gin.Context) {
 	Require(c, RequestTokenExists(c))
 	accounts, err := service.GetAllAccounts()
@@ -29,13 +34,14 @@ func ListAccounts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	authorized := make([]service.AccountWithSecretCount, 0, len(accounts))
+	response := make([]accountListItem, 0, len(accounts))
 	for _, account := range accounts {
-		if RequestTokenCanAccessAccount(c, account.Account) {
-			authorized = append(authorized, account)
-		}
+		response = append(response, accountListItem{
+			AccountWithSecretCount: account,
+			CanAccess:              RequestTokenCanAccessAccount(c, account.Account),
+		})
 	}
-	c.JSON(http.StatusOK, authorized)
+	c.JSON(http.StatusOK, response)
 }
 
 func GetAccount(c *gin.Context) {

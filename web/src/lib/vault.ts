@@ -106,10 +106,12 @@ export type AppSecretApplicationWithSecrets = AppSecretApplication & {
 
 export type AccountListItem = Account & {
   secret_count: number
+  can_access: boolean
 }
 
 export type AppSecretApplicationListItem = AppSecretApplication & {
   secret_count: number
+  can_access: boolean
 }
 
 export type AccountInput = {
