@@ -50,6 +50,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/users/@me", GetCurrentUser)
 	router.GET("/groups", ListSentinelGroups)
 
+	router.POST("/secrets/totp/qr", DecodeTOTPRegistrationQRCode)
+
 	router.GET("/accounts", ListAccounts)
 	router.POST("/accounts", CreateAccount)
 	router.GET("/accounts/:id", GetAccount)

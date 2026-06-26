@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { commonSecretTypes, type SecretInput } from "@/lib/vault"
+import { commonSecretTypes, decodeTOTPRegistrationQRCode, type SecretInput } from "@/lib/vault"
 
 const CUSTOM_SECRET_TYPE = "__custom__"
 const TOTP_SECRET_TYPE = "totp_seed"
@@ -33,58 +33,6 @@ function getClipboardImageFile(event: React.ClipboardEvent) {
     if (file) return file
   }
   return null
-}
-
-async function decodeQRCodeFromImage(file: File) {
-  const { default: jsQR } = await import("jsqr")
-  const bitmap = await createImageBitmap(file)
-  try {
-    const canvas = document.createElement("canvas")
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
-    const context = canvas.getContext("2d")
-    if (!context) {
-      throw new Error("Could not read QR image")
-    }
-    context.drawImage(bitmap, 0, 0)
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "attemptBoth",
-    })
-    if (!code?.data) {
-      throw new Error("No QR code found")
-    }
-    return code.data
-  } finally {
-    bitmap.close()
-  }
-}
-
-function parseTOTPURL(value: string) {
-  const url = new URL(value)
-  if (url.protocol !== "otpauth:" || url.host !== "totp") {
-    throw new Error("QR code is not a TOTP registration code")
-  }
-  if (!url.searchParams.get("secret")) {
-    throw new Error("TOTP registration code is missing a seed")
-  }
-  const rawLabel = decodeURIComponent(url.pathname.replace(/^\/+/, ""))
-  const separatorIndex = rawLabel.indexOf(":")
-  const issuerFromLabel = separatorIndex >= 0 ? rawLabel.slice(0, separatorIndex) : ""
-  const accountName = separatorIndex >= 0 ? rawLabel.slice(separatorIndex + 1) : rawLabel
-  const issuer = url.searchParams.get("issuer") || issuerFromLabel
-  return {
-    accountName: accountName.trim(),
-    issuer: issuer.trim(),
-  }
-}
-
-function slugifySecretKey(value: string) {
-  const slug = value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-  return slug || "code"
 }
 
 export function SecretFormDialog({
@@ -133,19 +81,13 @@ export function SecretFormDialog({
     event.preventDefault()
     setIsDecodingQRCode(true)
     try {
-      const decodedValue = await decodeQRCodeFromImage(imageFile)
-      const totpRegistration = parseTOTPURL(decodedValue)
+      const totpRegistration = await decodeTOTPRegistrationQRCode(imageFile)
       setType(TOTP_SECRET_TYPE)
       setIsCustomType(false)
       setSensitive(true)
-      setPlainValue(decodedValue)
-      setKey((current) =>
-        current || `totp_${slugifySecretKey(totpRegistration.accountName || totpRegistration.issuer)}`
-      )
-      setLabel((current) =>
-        current ||
-        [totpRegistration.issuer, totpRegistration.accountName].filter(Boolean).join(" ")
-      )
+      setPlainValue(totpRegistration.value)
+      setKey((current) => current || totpRegistration.suggested_key)
+      setLabel((current) => current || totpRegistration.suggested_label)
       toast.success("TOTP QR loaded")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to read TOTP QR")
