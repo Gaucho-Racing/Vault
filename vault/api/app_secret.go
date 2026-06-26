@@ -113,7 +113,7 @@ func DeleteApplication(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessApplication(c, application))
-	if err := service.DeleteApplication(application, GetRequestEntityID(c)); err != nil {
+	if err := service.DeleteApplication(application); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
 			return
@@ -208,7 +208,7 @@ func DeleteApplicationSecret(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessApplication(c, application))
-	if err := service.DeleteAppSecret(application.ID, c.Param("secretID"), GetRequestEntityID(c)); err != nil {
+	if err := service.DeleteAppSecret(application.ID, c.Param("secretID")); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "app secret not found"})
 			return

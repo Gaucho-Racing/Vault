@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/gaucho-racing/ulid-go"
 	"github.com/gaucho-racing/vault/vault/database"
@@ -31,7 +30,6 @@ type accountSecretCount struct {
 func GetAllAccounts() ([]AccountWithSecretCount, error) {
 	accounts := []model.Account{}
 	if err := database.DB.
-		Where("deleted_at IS NULL").
 		Order("name ASC").
 		Find(&accounts).Error; err != nil {
 		return []AccountWithSecretCount{}, err
@@ -59,7 +57,7 @@ func GetAllAccounts() ([]AccountWithSecretCount, error) {
 
 func GetAccountByID(id string) (model.Account, error) {
 	var account model.Account
-	if err := database.DB.Where("id = ? AND deleted_at IS NULL", id).First(&account).Error; err != nil {
+	if err := database.DB.Where("id = ?", id).First(&account).Error; err != nil {
 		return model.Account{}, err
 	}
 	return account, nil
@@ -87,7 +85,7 @@ func getSecretCountsByAccountID(accountIDs []string) (map[string]int64, error) {
 	if err := database.DB.
 		Model(&model.Secret{}).
 		Select("account_id, count(*) as secret_count").
-		Where("account_id IN ? AND deleted_at IS NULL", accountIDs).
+		Where("account_id IN ?", accountIDs).
 		Group("account_id").
 		Scan(&counts).Error; err != nil {
 		return map[string]int64{}, err
@@ -162,13 +160,13 @@ func updateAccount(db *gorm.DB, account model.Account) (model.Account, error) {
 	return account, nil
 }
 
-func DeleteAccount(id string, entityID string) error {
-	return deleteAccount(database.DB, id, entityID)
+func DeleteAccount(id string) error {
+	return deleteAccount(database.DB, id)
 }
 
-func DeleteAccountWithAudit(account model.Account, entityID string, auditLog model.AuditLog) error {
+func DeleteAccountWithAudit(account model.Account, auditLog model.AuditLog) error {
 	return database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := deleteAccount(tx, account.ID, entityID); err != nil {
+		if err := deleteAccount(tx, account.ID); err != nil {
 			return err
 		}
 		auditLog.AccountID = account.ID
@@ -177,15 +175,11 @@ func DeleteAccountWithAudit(account model.Account, entityID string, auditLog mod
 	})
 }
 
-func deleteAccount(db *gorm.DB, id string, entityID string) error {
-	now := time.Now()
-	result := db.
-		Model(&model.Account{}).
-		Where("id = ? AND deleted_at IS NULL", id).
-		Updates(map[string]interface{}{
-			"deleted_at":           &now,
-			"updated_by_entity_id": entityID,
-		})
+func deleteAccount(db *gorm.DB, id string) error {
+	if err := db.Where("account_id = ?", id).Delete(&model.Secret{}).Error; err != nil {
+		return err
+	}
+	result := db.Where("id = ?", id).Delete(&model.Account{})
 	if result.Error != nil {
 		return result.Error
 	}

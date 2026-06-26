@@ -132,7 +132,7 @@ func DeleteAccount(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanAccessAccount(c, account))
-	if err := service.DeleteAccountWithAudit(account, GetRequestEntityID(c), newAccountAuditLog(c, service.AuditActionAccountDeleted, account)); err != nil {
+	if err := service.DeleteAccountWithAudit(account, newAccountAuditLog(c, service.AuditActionAccountDeleted, account)); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
 			return

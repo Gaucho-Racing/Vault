@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/gaucho-racing/ulid-go"
 	"github.com/gaucho-racing/vault/vault/database"
@@ -16,7 +15,7 @@ var ErrSecretKeyRequired = errors.New("secret key is required")
 func GetSecretsForAccount(accountID string) ([]model.Secret, error) {
 	secrets := []model.Secret{}
 	if err := database.DB.
-		Where("account_id = ? AND deleted_at IS NULL", accountID).
+		Where("account_id = ?", accountID).
 		Order("key ASC").
 		Find(&secrets).Error; err != nil {
 		return []model.Secret{}, err
@@ -26,7 +25,7 @@ func GetSecretsForAccount(accountID string) ([]model.Secret, error) {
 
 func GetSecretByID(id string) (model.Secret, error) {
 	var secret model.Secret
-	if err := database.DB.Where("id = ? AND deleted_at IS NULL", id).First(&secret).Error; err != nil {
+	if err := database.DB.Where("id = ?", id).First(&secret).Error; err != nil {
 		return model.Secret{}, err
 	}
 	return secret, nil
@@ -34,7 +33,7 @@ func GetSecretByID(id string) (model.Secret, error) {
 
 func GetSecretForAccount(accountID string, secretID string) (model.Secret, error) {
 	var secret model.Secret
-	if err := database.DB.Where("id = ? AND account_id = ? AND deleted_at IS NULL", secretID, accountID).First(&secret).Error; err != nil {
+	if err := database.DB.Where("id = ? AND account_id = ?", secretID, accountID).First(&secret).Error; err != nil {
 		return model.Secret{}, err
 	}
 	return secret, nil
@@ -69,15 +68,10 @@ func UpdateSecret(secret model.Secret) (model.Secret, error) {
 	return secret, nil
 }
 
-func DeleteSecret(accountID string, secretID string, entityID string) error {
-	now := time.Now()
+func DeleteSecret(accountID string, secretID string) error {
 	result := database.DB.
-		Model(&model.Secret{}).
 		Where("id = ? AND account_id = ?", secretID, accountID).
-		Updates(map[string]interface{}{
-			"deleted_at":           &now,
-			"updated_by_entity_id": entityID,
-		})
+		Delete(&model.Secret{})
 	if result.Error != nil {
 		return result.Error
 	}
