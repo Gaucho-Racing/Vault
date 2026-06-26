@@ -156,7 +156,7 @@ function GroupPicker({
         <div className="min-h-0 overflow-hidden">
           <div
             className={cn(
-              "space-y-2 rounded-lg bg-muted/35 p-2 transition-transform duration-200 ease-out",
+              "space-y-2 rounded-xl bg-muted/25 p-2 transition-transform duration-200 ease-out",
               isAdding ? "translate-y-0" : "-translate-y-1"
             )}
           >
@@ -167,7 +167,7 @@ function GroupPicker({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search groups"
-                className="pl-9"
+                className="bg-background/80 pl-9 shadow-sm shadow-black/[0.02] focus-visible:ring-primary/20"
                 tabIndex={isAdding ? 0 : -1}
               />
             </div>
@@ -187,24 +187,21 @@ function GroupPicker({
                 {search.trim() ? "No matching groups." : "No more groups available."}
               </div>
             ) : (
-              <div className="max-h-72 space-y-1 overflow-y-auto">
+              <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
                 {filteredGroups.map((group) => (
                   <button
                     key={group.id}
                     type="button"
                     onClick={() => addGroup(group.name)}
                     tabIndex={isAdding ? 0 : -1}
-                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none"
+                    className="block w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-background/85 focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none dark:hover:bg-muted/50"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{group.name}</div>
-                      {group.description && (
-                        <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                          {group.description}
-                        </div>
-                      )}
-                    </div>
-                    <Plus className="size-4 shrink-0 text-primary" />
+                    <div className="truncate font-medium">{group.name}</div>
+                    {group.description && (
+                      <div className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                        {group.description}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
