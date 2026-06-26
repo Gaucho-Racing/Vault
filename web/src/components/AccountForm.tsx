@@ -33,7 +33,7 @@ function AccessSummary({ restricted }: { restricted: boolean }) {
   const Icon = restricted ? ShieldCheck : Globe2
 
   return (
-    <Card className={cn("border-0 bg-muted/45 shadow-none", restricted && "bg-primary/10")}>
+    <Card className={cn("border-0 bg-muted/45 py-0 shadow-none", restricted && "bg-primary/10")}>
       <CardContent className="flex items-start gap-3 p-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background text-primary shadow-sm shadow-black/[0.03] dark:shadow-black/20">
           <Icon className="size-4" />
@@ -156,7 +156,7 @@ function GroupPicker({
         <div className="min-h-0 overflow-hidden">
           <div
             className={cn(
-              "space-y-2 rounded-xl bg-muted/25 p-2 transition-transform duration-200 ease-out",
+              "space-y-2 rounded-xl bg-muted/45 p-2 transition-transform duration-200 ease-out dark:bg-muted/35",
               isAdding ? "translate-y-0" : "-translate-y-1"
             )}
           >
@@ -167,7 +167,7 @@ function GroupPicker({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search groups"
-                className="bg-background/80 pl-9 shadow-sm shadow-black/[0.02] focus-visible:ring-primary/20"
+                className="border-input/70 bg-card pl-9 shadow-sm shadow-black/[0.03] focus-visible:ring-primary/20 dark:bg-background/80"
                 tabIndex={isAdding ? 0 : -1}
               />
             </div>
@@ -194,7 +194,7 @@ function GroupPicker({
                     type="button"
                     onClick={() => addGroup(group.name)}
                     tabIndex={isAdding ? 0 : -1}
-                    className="block w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-background/85 focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none dark:hover:bg-muted/50"
+                    className="block w-full rounded-lg px-3 py-2.5 text-left text-sm transition-all hover:bg-card hover:shadow-sm hover:shadow-black/[0.03] focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:outline-none dark:hover:bg-background/70 dark:focus-visible:bg-background/70"
                   >
                     <div className="truncate font-medium">{group.name}</div>
                     {group.description && (

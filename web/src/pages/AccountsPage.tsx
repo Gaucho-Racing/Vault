@@ -97,8 +97,8 @@ export default function AccountsPage() {
                     </span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
+                <CardContent className="space-y-3">
+                  <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
                     {account.description || "No description"}
                   </p>
                   <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-2 text-xs">
