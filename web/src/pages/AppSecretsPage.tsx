@@ -3,7 +3,6 @@ import { ArrowUpRight, Clock3, CodeXml, Lock, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
-import { GithubIcon } from "@/components/icons/socials"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,10 +25,7 @@ function applicationMatches(application: AppSecretApplicationListItem, query: st
   if (!normalizedQuery) return true
   return (
     application.name.toLowerCase().includes(normalizedQuery) ||
-    application.access_group_names.some((group) => group.toLowerCase().includes(normalizedQuery)) ||
-    application.github_actions_repositories.some((repository) =>
-      repository.toLowerCase().includes(normalizedQuery),
-    )
+    application.access_group_names.some((group) => group.toLowerCase().includes(normalizedQuery))
   )
 }
 
@@ -126,16 +122,6 @@ export default function AppSecretsPage() {
                     <CodeXml className="size-3.5 shrink-0 text-primary" />
                     <span className="min-w-0 truncate">
                       {secretCountLabel(application.secret_count)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-2 text-xs">
-                    <GithubIcon className="size-3.5 shrink-0 text-primary" />
-                    <span className="min-w-0 truncate">
-                      {application.github_actions_repositories.length === 0
-                        ? "Actions disabled"
-                        : `${application.github_actions_repositories.length} repo${
-                            application.github_actions_repositories.length === 1 ? "" : "s"
-                          }`}
                     </span>
                   </div>
                   <div className="flex min-h-6 flex-wrap gap-1.5">

@@ -4,8 +4,8 @@ inputs:
   vault_url:
     description: Base URL for the Vault API.
     required: true
-  application:
-    description: Vault app-secret application name.
+  secrets:
+    description: Newline or comma separated app secret selectors to export.
     required: true
   audience:
     description: Expected OIDC audience configured by Vault.
@@ -17,7 +17,7 @@ runs:
     - shell: bash
       env:
         VAULT_URL: ${{ inputs.vault_url }}
-        VAULT_APPLICATION: ${{ inputs.application }}
+        VAULT_SECRETS: ${{ inputs.secrets }}
         VAULT_AUDIENCE: ${{ inputs.audience }}
       run: |
         set +x
@@ -44,9 +44,18 @@ runs:
           exit 1
         fi
 
-        payload="$(jq -n --arg token "$oidc_token" '{token: $token}')"
+        requested_secrets="$(
+          jq -Rsc '[split("\n")[] | split(",")[] | gsub("^\\s+|\\s+$"; "") | select(length > 0)]' <<< "$VAULT_SECRETS"
+        )"
+
+        if [ "$requested_secrets" = "[]" ]; then
+          echo "At least one Vault app secret selector is required." >&2
+          exit 1
+        fi
+
+        payload="$(jq -n --arg token "$oidc_token" --argjson secrets "$requested_secrets" '{token: $token, secrets: $secrets}')"
         curl -fsS \
           -X POST \
           -H "Content-Type: application/json" \
           --data "$payload" \
-          "${VAULT_URL%/}/integrations/github/actions/app-secrets/${VAULT_APPLICATION}/env" >> "$GITHUB_ENV"
+          "${VAULT_URL%/}/integrations/github/actions/env" >> "$GITHUB_ENV"
