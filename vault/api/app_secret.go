@@ -20,6 +20,11 @@ type appSecretRequest struct {
 	Value string `json:"value"`
 }
 
+type applicationListItem struct {
+	service.ApplicationWithSecretCount
+	CanAccess bool `json:"can_access"`
+}
+
 func ListApplications(c *gin.Context) {
 	Require(c, RequestTokenExists(c))
 	applications, err := service.GetAllApplications()
@@ -27,13 +32,14 @@ func ListApplications(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	authorized := make([]service.ApplicationWithSecretCount, 0, len(applications))
+	response := make([]applicationListItem, 0, len(applications))
 	for _, application := range applications {
-		if RequestTokenCanAccessApplication(c, application.Application) {
-			authorized = append(authorized, application)
-		}
+		response = append(response, applicationListItem{
+			ApplicationWithSecretCount: application,
+			CanAccess:                  RequestTokenCanAccessApplication(c, application.Application),
+		})
 	}
-	c.JSON(http.StatusOK, authorized)
+	c.JSON(http.StatusOK, response)
 }
 
 func GetApplication(c *gin.Context) {

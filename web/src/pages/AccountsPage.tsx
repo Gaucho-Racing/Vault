@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowUpRight, Clock3, KeyRound, Plus, Search } from "lucide-react"
+import { ArrowUpRight, Clock3, KeyRound, Lock, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { listAccounts } from "@/lib/vault"
+import { cn } from "@/lib/utils"
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, {
@@ -86,14 +87,26 @@ export default function AccountsPage() {
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filteredAccounts.map((account) => (
-            <Link key={account.id} to={`/accounts/${account.id}`} className="group">
-              <Card className="h-full gap-5 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg hover:shadow-black/5 dark:hover:border-primary/30 dark:hover:shadow-black/25">
+          {filteredAccounts.map((account) => {
+            const card = (
+              <Card
+                className={cn(
+                  "h-full gap-5 transition-all",
+                  account.can_access
+                    ? "hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg hover:shadow-black/5 dark:hover:border-primary/30 dark:hover:shadow-black/25"
+                    : "opacity-60",
+                )}
+              >
                 <CardHeader className="gap-3">
                   <CardTitle className="flex items-start justify-between gap-3">
                     <span className="min-w-0 truncate text-base font-semibold">{account.name}</span>
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      <ArrowUpRight className="size-4" />
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
+                        account.can_access && "transition-colors group-hover:bg-primary group-hover:text-primary-foreground",
+                      )}
+                    >
+                      {account.can_access ? <ArrowUpRight className="size-4" /> : <Lock className="size-3.5" />}
                     </span>
                   </CardTitle>
                 </CardHeader>
@@ -122,8 +135,18 @@ export default function AccountsPage() {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+            )
+
+            return account.can_access ? (
+              <Link key={account.id} to={`/accounts/${account.id}`} className="group">
+                {card}
+              </Link>
+            ) : (
+              <div key={account.id} className="cursor-not-allowed" title="You don't have access to this account">
+                {card}
+              </div>
+            )
+          })}
         </div>
       )}
     </PageContainer>
