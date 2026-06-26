@@ -11,7 +11,7 @@ import {
   Trash2,
   UsersRound,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -27,13 +27,17 @@ import {
   createSecret,
   deleteAccount,
   deleteSecret,
+  generateTOTPCode,
   getAccount,
   revealSecret,
   updateAccount,
   type AccountInput,
   type Secret,
   type SecretInput,
+  type TOTPCode,
 } from "@/lib/vault"
+
+const TOTP_SECRET_TYPE = "totp_seed"
 
 function errorMessage(error: unknown, fallback: string) {
   return (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
@@ -56,6 +60,84 @@ async function copyValue(value: string) {
   }
 }
 
+function isTOTPSecret(secret: Secret) {
+  return secret.type.trim().toLowerCase() === TOTP_SECRET_TYPE
+}
+
+function formatTOTPCode(code: string) {
+  if (code.length === 6) return `${code.slice(0, 3)} ${code.slice(3)}`
+  if (code.length === 8) return `${code.slice(0, 4)} ${code.slice(4)}`
+  return code
+}
+
+function TOTPSecretValue({ accountID, secret }: { accountID: string; secret: Secret }) {
+  const [code, setCode] = useState<TOTPCode | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const refreshAttemptedFor = useRef<string | null>(null)
+  const totpMutation = useMutation({
+    mutationFn: () => generateTOTPCode(accountID, secret.id),
+    onSuccess: (nextCode) => {
+      setCode(nextCode)
+      setNowMs(Date.now())
+      refreshAttemptedFor.current = null
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to generate TOTP code")),
+  })
+  const secondsRemaining = code
+    ? Math.max(0, Math.ceil((new Date(code.expires_at).getTime() - nowMs) / 1000))
+    : 0
+
+  useEffect(() => {
+    if (!code) return
+    const intervalID = window.setInterval(() => {
+      setNowMs(Date.now())
+    }, 1000)
+    return () => window.clearInterval(intervalID)
+  }, [code])
+
+  useEffect(() => {
+    if (
+      !code ||
+      totpMutation.isPending ||
+      secondsRemaining > 1 ||
+      refreshAttemptedFor.current === code.expires_at
+    ) {
+      return
+    }
+    refreshAttemptedFor.current = code.expires_at
+    totpMutation.mutate()
+  }, [code, secondsRemaining, totpMutation])
+
+  if (!code) {
+    return (
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={totpMutation.isPending}
+        onClick={() => totpMutation.mutate()}
+      >
+        <Clock3 className="size-3.5" />
+        {totpMutation.isPending ? "Generating" : "Generate code"}
+      </Button>
+    )
+  }
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <code className="min-w-24 rounded-md bg-gr-pink/10 px-2.5 py-1.5 text-center font-mono text-sm font-semibold text-gr-pink dark:bg-gr-pink/20">
+        {formatTOTPCode(code.code)}
+      </code>
+      <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+        {secondsRemaining}s
+      </span>
+      <Button variant="ghost" size="icon-sm" onClick={() => void copyValue(code.code)}>
+        <Copy className="size-3.5" />
+        <span className="sr-only">Copy TOTP code</span>
+      </Button>
+    </div>
+  )
+}
+
 function SecretValue({
   accountID,
   secret,
@@ -75,6 +157,10 @@ function SecretValue({
   onCopy: (accountID: string, secretID: string) => void
   onHide: (secretID: string) => void
 }) {
+  if (isTOTPSecret(secret)) {
+    return <TOTPSecretValue accountID={accountID} secret={secret} />
+  }
+
   if (!secret.sensitive) {
     return (
       <div className="flex min-w-0 items-center gap-2">

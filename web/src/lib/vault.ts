@@ -30,6 +30,23 @@ export type Secret = {
   updated_at: string
 }
 
+export type TOTPCode = {
+  code: string
+  period: number
+  digits: number
+  algorithm: string
+  seconds_remaining: number
+  expires_at: string
+}
+
+export type TOTPRegistration = {
+  value: string
+  issuer: string
+  account_name: string
+  suggested_key: string
+  suggested_label: string
+}
+
 export type AccountWithSecrets = Account & {
   secrets: Secret[]
 }
@@ -122,4 +139,16 @@ export async function revealSecret(accountID: string, secretID: string) {
     `/accounts/${accountID}/secrets/${secretID}/reveal`,
   )
   return response.data.value
+}
+
+export async function generateTOTPCode(accountID: string, secretID: string) {
+  const response = await api.post<TOTPCode>(`/accounts/${accountID}/secrets/${secretID}/totp`)
+  return response.data
+}
+
+export async function decodeTOTPRegistrationQRCode(file: File) {
+  const formData = new FormData()
+  formData.append("file", file, file.name || "totp-qr.png")
+  const response = await api.post<TOTPRegistration>("/secrets/totp/qr", formData)
+  return response.data
 }

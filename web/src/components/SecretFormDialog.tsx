@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from "react"
+import { QrCode, Upload } from "lucide-react"
+import { useRef, useState, type ReactNode } from "react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,9 +21,38 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { commonSecretTypes, type SecretInput } from "@/lib/vault"
+import { commonSecretTypes, decodeTOTPRegistrationQRCode, type SecretInput } from "@/lib/vault"
 
 const CUSTOM_SECRET_TYPE = "__custom__"
+const TOTP_SECRET_TYPE = "totp_seed"
+const SUPPORTED_QR_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif"])
+
+function getClipboardImageFile(event: React.ClipboardEvent) {
+  for (const item of Array.from(event.clipboardData.items)) {
+    if (!item.type.startsWith("image/")) continue
+    const file = item.getAsFile()
+    if (file) return file
+  }
+  return null
+}
+
+function isSupportedQRImage(file: File) {
+  return SUPPORTED_QR_IMAGE_TYPES.has(file.type)
+}
+
+function getImageFile(files: FileList | null) {
+  if (!files) return null
+  return Array.from(files).find(isSupportedQRImage) ?? null
+}
+
+function hasImageFile(dataTransfer: DataTransfer) {
+  if (dataTransfer.items.length > 0) {
+    return Array.from(dataTransfer.items).some(
+      (item) => item.kind === "file" && SUPPORTED_QR_IMAGE_TYPES.has(item.type)
+    )
+  }
+  return getImageFile(dataTransfer.files) !== null
+}
 
 export function SecretFormDialog({
   trigger,
@@ -33,13 +64,18 @@ export function SecretFormDialog({
   onSubmit: (input: SecretInput) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
+  const qrFileInputRef = useRef<HTMLInputElement>(null)
+  const qrDragDepth = useRef(0)
   const [key, setKey] = useState("")
   const [label, setLabel] = useState("")
   const [type, setType] = useState("")
   const [isCustomType, setIsCustomType] = useState(false)
   const [plainValue, setPlainValue] = useState("")
   const [sensitive, setSensitive] = useState(true)
+  const [isDecodingQRCode, setIsDecodingQRCode] = useState(false)
+  const [isDraggingQRCode, setIsDraggingQRCode] = useState(false)
   const selectedType = commonSecretTypes.includes(type) ? type : isCustomType ? CUSTOM_SECRET_TYPE : undefined
+  const hasTOTPRegistrationURL = plainValue.trim().toLowerCase().startsWith("otpauth://totp/")
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -57,13 +93,91 @@ export function SecretFormDialog({
     setIsCustomType(false)
     setPlainValue("")
     setSensitive(true)
+    setIsDecodingQRCode(false)
+    setIsDraggingQRCode(false)
+    qrDragDepth.current = 0
+  }
+
+  async function loadTOTPQRCode(imageFile: File) {
+    setIsDecodingQRCode(true)
+    try {
+      const totpRegistration = await decodeTOTPRegistrationQRCode(imageFile)
+      setType(TOTP_SECRET_TYPE)
+      setIsCustomType(false)
+      setSensitive(true)
+      setPlainValue(totpRegistration.value)
+      setKey((current) => current || totpRegistration.suggested_key)
+      setLabel((current) => current || totpRegistration.suggested_label)
+      toast.success("TOTP QR loaded")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to read TOTP QR")
+    } finally {
+      setIsDecodingQRCode(false)
+    }
+  }
+
+  async function handlePaste(event: React.ClipboardEvent) {
+    const imageFile = getClipboardImageFile(event)
+    if (!imageFile) return
+
+    event.preventDefault()
+    await loadTOTPQRCode(imageFile)
+  }
+
+  async function handleQRCodeFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const imageFile = getImageFile(event.currentTarget.files)
+    event.currentTarget.value = ""
+
+    if (!imageFile) {
+      toast.error("Select a PNG, JPG, or GIF")
+      return
+    }
+    await loadTOTPQRCode(imageFile)
+  }
+
+  function handleQRCodeDragEnter(event: React.DragEvent<HTMLDivElement>) {
+    if (!hasImageFile(event.dataTransfer)) return
+
+    event.preventDefault()
+    qrDragDepth.current += 1
+    setIsDraggingQRCode(true)
+  }
+
+  function handleQRCodeDragOver(event: React.DragEvent<HTMLDivElement>) {
+    if (!hasImageFile(event.dataTransfer)) return
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "copy"
+  }
+
+  function handleQRCodeDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    if (!hasImageFile(event.dataTransfer)) return
+
+    event.preventDefault()
+    qrDragDepth.current = Math.max(0, qrDragDepth.current - 1)
+    if (qrDragDepth.current === 0) {
+      setIsDraggingQRCode(false)
+    }
+  }
+
+  async function handleQRCodeDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    qrDragDepth.current = 0
+    setIsDraggingQRCode(false)
+
+    const imageFile = getImageFile(event.dataTransfer.files)
+    if (!imageFile) {
+      toast.error("Drop a PNG, JPG, or GIF")
+      return
+    }
+    await loadTOTPQRCode(imageFile)
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} onPaste={(event) => void handlePaste(event)} className="space-y-4">
           <DialogHeader>
             <DialogTitle>New secret</DialogTitle>
           </DialogHeader>
@@ -136,6 +250,52 @@ export function SecretFormDialog({
               required={sensitive}
             />
           </div>
+
+          {type === TOTP_SECRET_TYPE && (
+            <div
+              tabIndex={0}
+              onDragEnter={handleQRCodeDragEnter}
+              onDragLeave={handleQRCodeDragLeave}
+              onDragOver={handleQRCodeDragOver}
+              onDrop={(event) => void handleQRCodeDrop(event)}
+              className={[
+                "flex items-center gap-3 rounded-lg border border-dashed border-gr-pink/35 bg-gr-pink/8 px-3 py-2.5 outline-none transition-colors focus-visible:border-gr-purple focus-visible:ring-3 focus-visible:ring-gr-purple/20 dark:bg-gr-pink/12",
+                isDraggingQRCode && "border-gr-purple bg-gr-purple/10 ring-3 ring-gr-purple/20",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <input
+                ref={qrFileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif"
+                className="sr-only"
+                onChange={(event) => void handleQRCodeFileChange(event)}
+              />
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background text-gr-pink shadow-sm shadow-black/[0.03] dark:shadow-black/20">
+                <QrCode className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium">
+                  {isDecodingQRCode ? "Scanning QR" : isDraggingQRCode ? "Drop QR image" : "TOTP QR image"}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {hasTOTPRegistrationURL ? "Registration QR loaded" : "Paste, upload, or drop"}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                disabled={isDecodingQRCode}
+                onClick={() => qrFileInputRef.current?.click()}
+              >
+                <Upload data-icon="inline-start" />
+                Upload
+              </Button>
+            </div>
+          )}
 
           <label className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm dark:bg-muted/30">
             <span className="font-medium">Sensitive</span>
