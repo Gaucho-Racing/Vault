@@ -239,6 +239,10 @@ func RequestTokenCanManageSettings(c *gin.Context) bool {
 	return RequestTokenHasScope(c, "sentinel:all") || RequestTokenHasGroupName(c, "Admins")
 }
 
+func RequestTokenCanManageGitHubActionsRules(c *gin.Context) bool {
+	return RequestTokenCanManageSettings(c) || RequestTokenHasGroupName(c, "DevopsMembers")
+}
+
 func GetRequestToken(c *gin.Context) string {
 	token, _ := c.Get("Auth-Token")
 	return contextString(token)

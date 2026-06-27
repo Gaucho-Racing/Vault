@@ -53,7 +53,7 @@ func ExportGitHubActionsEnv(c *gin.Context) {
 }
 
 func ListGitHubActionsRules(c *gin.Context) {
-	Require(c, RequestTokenCanManageSettings(c))
+	Require(c, RequestTokenCanManageGitHubActionsRules(c))
 	rules, err := service.GetAllGitHubActionsRules()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -63,7 +63,7 @@ func ListGitHubActionsRules(c *gin.Context) {
 }
 
 func CreateGitHubActionsRule(c *gin.Context) {
-	Require(c, RequestTokenCanManageSettings(c))
+	Require(c, RequestTokenCanManageGitHubActionsRules(c))
 	var req githubActionsRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -78,7 +78,7 @@ func CreateGitHubActionsRule(c *gin.Context) {
 }
 
 func UpdateGitHubActionsRule(c *gin.Context) {
-	Require(c, RequestTokenCanManageSettings(c))
+	Require(c, RequestTokenCanManageGitHubActionsRules(c))
 	rule, err := service.GetGitHubActionsRuleByID(c.Param("id"))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -110,7 +110,7 @@ func UpdateGitHubActionsRule(c *gin.Context) {
 }
 
 func DeleteGitHubActionsRule(c *gin.Context) {
-	Require(c, RequestTokenCanManageSettings(c))
+	Require(c, RequestTokenCanManageGitHubActionsRules(c))
 	if err := service.DeleteGitHubActionsRule(c.Param("id")); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "github actions rule not found"})
