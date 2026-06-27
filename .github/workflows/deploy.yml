@@ -30,7 +30,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Acquire Secrets
+      - name: Pull secrets
         id: vault
         uses: Gaucho-Racing/vault-pull-secrets@v1
         with:
