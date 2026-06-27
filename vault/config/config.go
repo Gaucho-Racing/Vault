@@ -3,7 +3,7 @@ package config
 import "os"
 
 const Name = "vault"
-const Version = "1.4.1"
+const Version = "1.4.2"
 
 func FormattedNameWithVersion() string {
 	return Name + ":v" + Version
