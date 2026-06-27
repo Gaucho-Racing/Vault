@@ -1,6 +1,6 @@
 # Vault
 
-[![vault](https://github.com/Gaucho-Racing/Vault/actions/workflows/vault.yml/badge.svg)](https://github.com/Gaucho-Racing/Vault/actions/workflows/vault.yml)
+[![build](https://github.com/Gaucho-Racing/Vault/actions/workflows/build.yml/badge.svg)](https://github.com/Gaucho-Racing/Vault/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/Gaucho-Racing/Vault?style=flat-square)](https://github.com/Gaucho-Racing/Vault/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
