@@ -1,11 +1,8 @@
 # Vault
 
 [![vault](https://github.com/Gaucho-Racing/Vault/actions/workflows/vault.yml/badge.svg)](https://github.com/Gaucho-Racing/Vault/actions/workflows/vault.yml)
-[![web](https://github.com/Gaucho-Racing/Vault/actions/workflows/web.yml/badge.svg)](https://github.com/Gaucho-Racing/Vault/actions/workflows/web.yml)
-[![deploy](https://github.com/Gaucho-Racing/Vault/actions/workflows/deploy.yml/badge.svg)](https://github.com/Gaucho-Racing/Vault/actions/workflows/deploy.yml)
 [![Release](https://img.shields.io/github/v/release/Gaucho-Racing/Vault?style=flat-square)](https://github.com/Gaucho-Racing/Vault/releases)
-[![Server Image](https://img.shields.io/badge/ghcr.io-vault--server-2496ED?style=flat-square)](https://github.com/Gaucho-Racing/Vault/pkgs/container/vault-server)
-[![Web Image](https://img.shields.io/badge/ghcr.io-vault--web-2496ED?style=flat-square)](https://github.com/Gaucho-Racing/Vault/pkgs/container/vault-web)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Vault is Gaucho Racing's internal secrets manager for shared credentials, application secrets, and workflow automation secrets.
 It provides a Sentinel-backed web interface for storing account credentials, TOTP seeds, notes, API keys, and app-scoped secrets with group-based access controls.
