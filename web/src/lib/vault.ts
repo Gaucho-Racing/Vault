@@ -147,10 +147,29 @@ export type GitHubActionsRuleInput = {
   enabled: boolean
 }
 
+export type KubernetesCluster = {
+  id: string
+  name: string
+  issuer: string
+  audience: string
+  enabled: boolean
+  created_by_entity_id: string
+  updated_by_entity_id: string
+  created_at: string
+  updated_at: string
+}
+
+export type KubernetesClusterInput = {
+  name: string
+  issuer: string
+  audience: string
+  enabled: boolean
+}
+
 export type KubernetesSecretRule = {
   id: string
   name: string
-  cluster_patterns: string[]
+  cluster_ids: string[]
   namespace_patterns: string[]
   service_account_patterns: string[]
   secret_selectors: string[]
@@ -163,7 +182,7 @@ export type KubernetesSecretRule = {
 
 export type KubernetesSecretRuleInput = {
   name: string
-  cluster_patterns: string[]
+  cluster_ids: string[]
   namespace_patterns: string[]
   service_account_patterns: string[]
   secret_selectors: string[]
@@ -220,7 +239,7 @@ type GitHubActionsRuleResponseFields = {
 }
 
 type KubernetesSecretRuleResponseFields = {
-  cluster_patterns?: string[] | null
+  cluster_ids?: string[] | null
   namespace_patterns?: string[] | null
   service_account_patterns?: string[] | null
   secret_selectors?: string[] | null
@@ -249,7 +268,7 @@ function normalizeGitHubActionsRule<T extends GitHubActionsRuleResponseFields>(r
 function normalizeKubernetesSecretRule<T extends KubernetesSecretRuleResponseFields>(rule: T) {
   return {
     ...rule,
-    cluster_patterns: normalizeStringArray(rule.cluster_patterns),
+    cluster_ids: normalizeStringArray(rule.cluster_ids),
     namespace_patterns: normalizeStringArray(rule.namespace_patterns),
     service_account_patterns: normalizeStringArray(rule.service_account_patterns),
     secret_selectors: normalizeStringArray(rule.secret_selectors),
@@ -302,6 +321,25 @@ export async function updateGitHubActionsRule(id: string, input: GitHubActionsRu
 
 export async function deleteGitHubActionsRule(id: string) {
   await api.delete(`/integrations/github/actions/rules/${id}`)
+}
+
+export async function listKubernetesClusters() {
+  const response = await api.get<KubernetesCluster[]>("/integrations/kubernetes/clusters")
+  return response.data
+}
+
+export async function createKubernetesCluster(input: KubernetesClusterInput) {
+  const response = await api.post<KubernetesCluster>("/integrations/kubernetes/clusters", input)
+  return response.data
+}
+
+export async function updateKubernetesCluster(id: string, input: KubernetesClusterInput) {
+  const response = await api.put<KubernetesCluster>(`/integrations/kubernetes/clusters/${id}`, input)
+  return response.data
+}
+
+export async function deleteKubernetesCluster(id: string) {
+  await api.delete(`/integrations/kubernetes/clusters/${id}`)
 }
 
 export async function listKubernetesSecretRules() {

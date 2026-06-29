@@ -5,7 +5,7 @@ import "time"
 type KubernetesSecretRule struct {
 	ID                     string    `json:"id" gorm:"primaryKey"`
 	Name                   string    `json:"name" gorm:"uniqueIndex"`
-	ClusterPatterns        []string  `json:"cluster_patterns" gorm:"type:jsonb;serializer:json"`
+	ClusterIDs             []string  `json:"cluster_ids" gorm:"type:jsonb;serializer:json"`
 	NamespacePatterns      []string  `json:"namespace_patterns" gorm:"type:jsonb;serializer:json"`
 	ServiceAccountPatterns []string  `json:"service_account_patterns" gorm:"type:jsonb;serializer:json"`
 	SecretSelectors        []string  `json:"secret_selectors" gorm:"type:jsonb;serializer:json"`

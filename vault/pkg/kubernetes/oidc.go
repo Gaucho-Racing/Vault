@@ -105,6 +105,29 @@ func NewVerifier(issuer string, audience string, client *http.Client) *Verifier 
 	}
 }
 
+func UnverifiedIssuer(token string) (string, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return "", invalidToken("token is required")
+	}
+	if len(token) > 64*1024 {
+		return "", invalidToken("token is too large")
+	}
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return "", invalidToken("token must have three segments")
+	}
+
+	var claims tokenClaims
+	if err := decodeSegment(parts[1], &claims); err != nil {
+		return "", invalidToken("decode claims: %v", err)
+	}
+	if strings.TrimSpace(claims.Issuer) == "" {
+		return "", invalidToken("issuer is required")
+	}
+	return strings.TrimRight(strings.TrimSpace(claims.Issuer), "/"), nil
+}
+
 func (v *Verifier) Verify(ctx context.Context, token string) (Claims, error) {
 	if v.issuer == "" {
 		return Claims{}, ErrNotConfigured

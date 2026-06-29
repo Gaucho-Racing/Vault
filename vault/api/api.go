@@ -58,6 +58,10 @@ func InitializeRoutes(router *gin.Engine) {
 	router.PUT("/integrations/github/actions/rules/:id", UpdateGitHubActionsRule)
 	router.DELETE("/integrations/github/actions/rules/:id", DeleteGitHubActionsRule)
 
+	router.GET("/integrations/kubernetes/clusters", ListKubernetesClusters)
+	router.POST("/integrations/kubernetes/clusters", CreateKubernetesCluster)
+	router.PUT("/integrations/kubernetes/clusters/:id", UpdateKubernetesCluster)
+	router.DELETE("/integrations/kubernetes/clusters/:id", DeleteKubernetesCluster)
 	router.GET("/integrations/kubernetes/rules", ListKubernetesSecretRules)
 	router.POST("/integrations/kubernetes/rules", CreateKubernetesSecretRule)
 	router.PUT("/integrations/kubernetes/rules/:id", UpdateKubernetesSecretRule)

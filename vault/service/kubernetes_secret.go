@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gaucho-racing/ulid-go"
-	"github.com/gaucho-racing/vault/vault/config"
 	"github.com/gaucho-racing/vault/vault/database"
 	"github.com/gaucho-racing/vault/vault/model"
 	"github.com/gaucho-racing/vault/vault/pkg/kubernetes"
@@ -16,8 +15,8 @@ import (
 
 var ErrKubernetesSecretRuleNameRequired = errors.New("kubernetes secret rule name is required")
 var ErrKubernetesSecretRuleNameInvalid = errors.New("kubernetes secret rule name must contain only lowercase letters, numbers, hyphens, and underscores")
-var ErrKubernetesClusterPatternRequired = errors.New("kubernetes cluster pattern is required")
-var ErrKubernetesClusterPatternInvalid = errors.New("kubernetes cluster pattern must contain only lowercase letters, numbers, hyphens, underscores, dots, and wildcards")
+var ErrKubernetesClusterRequired = errors.New("kubernetes cluster is required")
+var ErrKubernetesClusterInvalid = errors.New("kubernetes cluster is invalid")
 var ErrKubernetesNamespacePatternRequired = errors.New("kubernetes namespace pattern is required")
 var ErrKubernetesNamespacePatternInvalid = errors.New("kubernetes namespace pattern must contain only lowercase letters, numbers, hyphens, and wildcards")
 var ErrKubernetesServiceAccountPatternRequired = errors.New("kubernetes service account pattern is required")
@@ -32,9 +31,9 @@ var ErrKubernetesSecretKeyInvalid = errors.New("kubernetes secret key must conta
 type KubernetesExportRequest struct {
 	Secrets map[string]string
 	Claims  kubernetes.Claims
+	Cluster model.KubernetesCluster
 }
 
-var kubernetesClusterPattern = regexp.MustCompile(`^[a-z0-9*][a-z0-9_.*-]*$`)
 var kubernetesNamespacePattern = regexp.MustCompile(`^[a-z0-9*][a-z0-9*-]*$`)
 var kubernetesServiceAccountPattern = regexp.MustCompile(`^[a-z0-9*][a-z0-9*-]*$`)
 var kubernetesSecretKeyPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -102,7 +101,7 @@ func BuildKubernetesSecretData(req KubernetesExportRequest) (map[string]string, 
 
 	matchingRules := make([]model.KubernetesSecretRule, 0, len(rules))
 	for _, rule := range rules {
-		if kubernetesSecretRuleMatchesClaims(rule, req.Claims) {
+		if kubernetesSecretRuleMatchesClaims(rule, req.Cluster, req.Claims) {
 			matchingRules = append(matchingRules, rule)
 		}
 	}
@@ -127,7 +126,7 @@ func BuildKubernetesSecretData(req KubernetesExportRequest) (map[string]string, 
 
 func normalizeKubernetesSecretRule(rule *model.KubernetesSecretRule) error {
 	rule.Name = strings.ToLower(strings.TrimSpace(rule.Name))
-	rule.ClusterPatterns = normalizeLowerStringSlice(rule.ClusterPatterns)
+	rule.ClusterIDs = normalizeStringSlice(rule.ClusterIDs)
 	rule.NamespacePatterns = normalizeLowerStringSlice(rule.NamespacePatterns)
 	rule.ServiceAccountPatterns = normalizeLowerStringSlice(rule.ServiceAccountPatterns)
 	rule.SecretSelectors = normalizeGitHubActionsSecretSelectors(rule.SecretSelectors)
@@ -137,8 +136,8 @@ func normalizeKubernetesSecretRule(rule *model.KubernetesSecretRule) error {
 	if !appSecretIdentifierPattern.MatchString(rule.Name) {
 		return ErrKubernetesSecretRuleNameInvalid
 	}
-	if len(rule.ClusterPatterns) == 0 {
-		return ErrKubernetesClusterPatternRequired
+	if len(rule.ClusterIDs) == 0 {
+		return ErrKubernetesClusterRequired
 	}
 	if len(rule.NamespacePatterns) == 0 {
 		return ErrKubernetesNamespacePatternRequired
@@ -149,9 +148,12 @@ func normalizeKubernetesSecretRule(rule *model.KubernetesSecretRule) error {
 	if len(rule.SecretSelectors) == 0 {
 		return ErrKubernetesSecretSelectorRequired
 	}
-	for _, pattern := range rule.ClusterPatterns {
-		if !kubernetesClusterPattern.MatchString(pattern) {
-			return ErrKubernetesClusterPatternInvalid
+	for _, clusterID := range rule.ClusterIDs {
+		if _, err := GetKubernetesClusterByID(clusterID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrKubernetesClusterInvalid
+			}
+			return err
 		}
 	}
 	for _, pattern := range rule.NamespacePatterns {
@@ -198,9 +200,8 @@ func normalizeRequestedKubernetesSecrets(secrets map[string]string) (map[string]
 	return normalized, nil
 }
 
-func kubernetesSecretRuleMatchesClaims(rule model.KubernetesSecretRule, claims kubernetes.Claims) bool {
-	cluster := strings.ToLower(config.KubernetesClusterID)
-	if !anyWildcardMatches(rule.ClusterPatterns, cluster) {
+func kubernetesSecretRuleMatchesClaims(rule model.KubernetesSecretRule, cluster model.KubernetesCluster, claims kubernetes.Claims) bool {
+	if !stringSliceContains(rule.ClusterIDs, cluster.ID) {
 		return false
 	}
 	if !anyWildcardMatches(rule.NamespacePatterns, strings.ToLower(claims.Namespace)) {
