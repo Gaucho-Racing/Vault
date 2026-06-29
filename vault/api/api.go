@@ -59,6 +59,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.DELETE("/integrations/github/actions/rules/:id", DeleteGitHubActionsRule)
 
 	router.GET("/integrations/kubernetes/clusters", ListKubernetesClusters)
+	router.POST("/integrations/kubernetes/clusters/verify", VerifyKubernetesCluster)
 	router.POST("/integrations/kubernetes/clusters", CreateKubernetesCluster)
 	router.PUT("/integrations/kubernetes/clusters/:id", UpdateKubernetesCluster)
 	router.DELETE("/integrations/kubernetes/clusters/:id", DeleteKubernetesCluster)

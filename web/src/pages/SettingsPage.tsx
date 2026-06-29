@@ -1,5 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Edit2, Monitor, Moon, Plus, Server, Sun, Trash2, type LucideIcon } from "lucide-react"
+import {
+  Edit2,
+  Monitor,
+  Moon,
+  Plus,
+  Server,
+  ShieldCheck,
+  Sun,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react"
 import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
@@ -34,6 +44,7 @@ import {
   updateKubernetesCluster,
   updateGitHubActionsRule,
   updateKubernetesSecretRule,
+  verifyKubernetesCluster,
   type GitHubActionsRule,
   type GitHubActionsRuleInput,
   type KubernetesCluster,
@@ -212,12 +223,16 @@ function KubernetesClusterDialog({
   cluster,
   trigger,
   isPending,
+  isVerifying,
   onSubmit,
+  onVerify,
 }: {
   cluster?: KubernetesCluster
   trigger: ReactNode
   isPending: boolean
+  isVerifying: boolean
   onSubmit: (input: KubernetesClusterInput) => Promise<unknown>
+  onVerify: (input: KubernetesClusterInput) => Promise<unknown>
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(cluster?.name ?? "")
@@ -235,15 +250,23 @@ function KubernetesClusterDialog({
     setEnabled(cluster?.enabled ?? true)
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-    await onSubmit({
+  function clusterInput(): KubernetesClusterInput {
+    return {
       name: normalizeIdentifier(name),
       issuer: issuer.trim(),
       audience: audience.trim() || defaultKubernetesAudience,
       enabled,
-    })
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    await onSubmit(clusterInput())
     handleOpenChange(false)
+  }
+
+  async function handleVerify() {
+    await onVerify(clusterInput())
   }
 
   return (
@@ -307,6 +330,15 @@ function KubernetesClusterDialog({
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleVerify}
+              disabled={isPending || isVerifying}
+            >
+              <ShieldCheck className="size-4" />
+              {isVerifying ? "Verifying" : "Verify"}
+            </Button>
             <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
@@ -573,6 +605,12 @@ export default function SettingsPage() {
     onError: (error) => toast.error(errorMessage(error, "Failed to update Kubernetes cluster")),
   })
 
+  const verifyKubernetesClusterMutation = useMutation({
+    mutationFn: verifyKubernetesCluster,
+    onSuccess: () => toast.success("Kubernetes cluster verified"),
+    onError: (error) => toast.error(errorMessage(error, "Failed to verify Kubernetes cluster")),
+  })
+
   const deleteKubernetesClusterMutation = useMutation({
     mutationFn: deleteKubernetesCluster,
     onSuccess: () => {
@@ -757,7 +795,9 @@ export default function SettingsPage() {
             <div className="flex flex-wrap gap-2">
               <KubernetesClusterDialog
                 isPending={createKubernetesClusterMutation.isPending}
+                isVerifying={verifyKubernetesClusterMutation.isPending}
                 onSubmit={(input) => createKubernetesClusterMutation.mutateAsync(input)}
+                onVerify={(input) => verifyKubernetesClusterMutation.mutateAsync(input)}
                 trigger={
                   <Button size="sm" variant="secondary">
                     <Plus className="size-4" />
@@ -834,9 +874,11 @@ export default function SettingsPage() {
                         <KubernetesClusterDialog
                           cluster={cluster}
                           isPending={updateKubernetesClusterMutation.isPending}
+                          isVerifying={verifyKubernetesClusterMutation.isPending}
                           onSubmit={(input) =>
                             updateKubernetesClusterMutation.mutateAsync({ id: cluster.id, input })
                           }
+                          onVerify={(input) => verifyKubernetesClusterMutation.mutateAsync(input)}
                           trigger={
                             <Button variant="ghost" size="icon-sm">
                               <Edit2 className="size-3.5" />

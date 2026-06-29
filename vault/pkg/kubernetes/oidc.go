@@ -197,6 +197,13 @@ func (v *Verifier) Verify(ctx context.Context, token string) (Claims, error) {
 	}, nil
 }
 
+func (v *Verifier) Check(ctx context.Context) error {
+	if v.issuer == "" {
+		return ErrNotConfigured
+	}
+	return v.refreshKeys(ctx)
+}
+
 func (v *Verifier) publicKey(ctx context.Context, keyID string) (*rsa.PublicKey, error) {
 	v.mu.Lock()
 	if v.keysExpiresAt.After(v.now()) {

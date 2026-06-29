@@ -338,6 +338,11 @@ export async function updateKubernetesCluster(id: string, input: KubernetesClust
   return response.data
 }
 
+export async function verifyKubernetesCluster(input: KubernetesClusterInput) {
+  const response = await api.post<{ valid: boolean }>("/integrations/kubernetes/clusters/verify", input)
+  return response.data
+}
+
 export async function deleteKubernetesCluster(id: string) {
   await api.delete(`/integrations/kubernetes/clusters/${id}`)
 }

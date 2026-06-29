@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -22,6 +23,7 @@ var ErrKubernetesClusterIssuerInvalid = errors.New("kubernetes cluster issuer mu
 var ErrKubernetesClusterAudienceInvalid = errors.New("kubernetes cluster audience cannot contain whitespace")
 var ErrKubernetesClusterNotTrusted = errors.New("kubernetes cluster is not trusted")
 var ErrKubernetesClusterInUse = errors.New("kubernetes cluster is used by an access rule")
+var ErrKubernetesClusterVerificationFailed = errors.New("kubernetes cluster verification failed")
 
 var kubernetesAudiencePattern = regexp.MustCompile(`^\S+$`)
 
@@ -51,11 +53,11 @@ func GetKubernetesClusterByID(id string) (model.KubernetesCluster, error) {
 	return cluster, nil
 }
 
-func CreateKubernetesCluster(cluster model.KubernetesCluster) (model.KubernetesCluster, error) {
+func CreateKubernetesCluster(ctx context.Context, cluster model.KubernetesCluster) (model.KubernetesCluster, error) {
 	if cluster.ID == "" {
 		cluster.ID = ulid.Make().Prefixed("k8scluster")
 	}
-	if err := normalizeKubernetesCluster(&cluster); err != nil {
+	if err := VerifyKubernetesClusterConfig(ctx, &cluster); err != nil {
 		return model.KubernetesCluster{}, err
 	}
 	if err := database.DB.Create(&cluster).Error; err != nil {
@@ -64,8 +66,8 @@ func CreateKubernetesCluster(cluster model.KubernetesCluster) (model.KubernetesC
 	return cluster, nil
 }
 
-func UpdateKubernetesCluster(cluster model.KubernetesCluster) (model.KubernetesCluster, error) {
-	if err := normalizeKubernetesCluster(&cluster); err != nil {
+func UpdateKubernetesCluster(ctx context.Context, cluster model.KubernetesCluster) (model.KubernetesCluster, error) {
+	if err := VerifyKubernetesClusterConfig(ctx, &cluster); err != nil {
 		return model.KubernetesCluster{}, err
 	}
 	if err := database.DB.Save(&cluster).Error; err != nil {
@@ -114,6 +116,16 @@ func VerifyKubernetesToken(ctx context.Context, token string) (KubernetesVerifie
 		return KubernetesVerifiedIdentity{}, err
 	}
 	return KubernetesVerifiedIdentity{Cluster: cluster, Claims: claims}, nil
+}
+
+func VerifyKubernetesClusterConfig(ctx context.Context, cluster *model.KubernetesCluster) error {
+	if err := normalizeKubernetesCluster(cluster); err != nil {
+		return err
+	}
+	if err := kubernetes.NewVerifier(cluster.Issuer, cluster.Audience, nil).Check(ctx); err != nil {
+		return fmt.Errorf("%w: %v", ErrKubernetesClusterVerificationFailed, err)
+	}
+	return nil
 }
 
 func normalizeKubernetesCluster(cluster *model.KubernetesCluster) error {

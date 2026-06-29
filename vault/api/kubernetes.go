@@ -86,12 +86,27 @@ func CreateKubernetesCluster(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	cluster, err := service.CreateKubernetesCluster(modelKubernetesCluster(req, GetRequestEntityID(c), GetRequestEntityID(c)))
+	cluster, err := service.CreateKubernetesCluster(c.Request.Context(), modelKubernetesCluster(req, GetRequestEntityID(c), GetRequestEntityID(c)))
 	if err != nil {
 		handleKubernetesClusterError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, cluster)
+}
+
+func VerifyKubernetesCluster(c *gin.Context) {
+	Require(c, RequestTokenCanManageKubernetesSecretRules(c))
+	var req kubernetesClusterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	cluster := modelKubernetesCluster(req, GetRequestEntityID(c), GetRequestEntityID(c))
+	if err := service.VerifyKubernetesClusterConfig(c.Request.Context(), &cluster); err != nil {
+		handleKubernetesClusterError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"valid": true})
 }
 
 func UpdateKubernetesCluster(c *gin.Context) {
@@ -117,7 +132,7 @@ func UpdateKubernetesCluster(c *gin.Context) {
 	cluster.Enabled = req.Enabled
 	cluster.UpdatedByEntityID = GetRequestEntityID(c)
 
-	updated, err := service.UpdateKubernetesCluster(cluster)
+	updated, err := service.UpdateKubernetesCluster(c.Request.Context(), cluster)
 	if err != nil {
 		handleKubernetesClusterError(c, err)
 		return
@@ -264,6 +279,10 @@ func handleKubernetesClusterError(c *gin.Context, err error) {
 	}
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		c.JSON(http.StatusConflict, gin.H{"error": "kubernetes cluster name or issuer already exists"})
+		return
+	}
+	if errors.Is(err, service.ErrKubernetesClusterVerificationFailed) {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
