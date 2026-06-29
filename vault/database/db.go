@@ -39,6 +39,7 @@ func Init() {
 		&model.Application{},
 		&model.AppSecret{},
 		&model.GitHubActionsRule{},
+		&model.KubernetesSecretRule{},
 	); err != nil {
 		logger.SugarLogger.Fatalf("failed to run database migrations: %v", err)
 		return

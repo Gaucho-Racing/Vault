@@ -44,6 +44,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 
 	router.POST("/integrations/github/actions/env", ExportGitHubActionsEnv)
+	router.POST("/integrations/kubernetes/secrets", ExportKubernetesSecrets)
 
 	router.POST("/auth/login", LoginWithSentinel)
 	router.GET("/auth/session", GetSession)
@@ -56,6 +57,11 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/integrations/github/actions/rules", CreateGitHubActionsRule)
 	router.PUT("/integrations/github/actions/rules/:id", UpdateGitHubActionsRule)
 	router.DELETE("/integrations/github/actions/rules/:id", DeleteGitHubActionsRule)
+
+	router.GET("/integrations/kubernetes/rules", ListKubernetesSecretRules)
+	router.POST("/integrations/kubernetes/rules", CreateKubernetesSecretRule)
+	router.PUT("/integrations/kubernetes/rules/:id", UpdateKubernetesSecretRule)
+	router.DELETE("/integrations/kubernetes/rules/:id", DeleteKubernetesSecretRule)
 
 	router.POST("/secrets/totp/qr", DecodeTOTPRegistrationQRCode)
 
@@ -116,7 +122,8 @@ func authRouteSkipsTokenValidation(path string) bool {
 	return path == "/auth/login" ||
 		path == "/auth/refresh" ||
 		path == "/auth/logout" ||
-		path == "/integrations/github/actions/env"
+		path == "/integrations/github/actions/env" ||
+		path == "/integrations/kubernetes/secrets"
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {
@@ -240,6 +247,10 @@ func RequestTokenCanManageSettings(c *gin.Context) bool {
 }
 
 func RequestTokenCanManageGitHubActionsRules(c *gin.Context) bool {
+	return RequestTokenCanManageSettings(c) || RequestTokenHasGroupName(c, "DevopsMembers")
+}
+
+func RequestTokenCanManageKubernetesSecretRules(c *gin.Context) bool {
 	return RequestTokenCanManageSettings(c) || RequestTokenHasGroupName(c, "DevopsMembers")
 }
 

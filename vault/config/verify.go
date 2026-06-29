@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/gaucho-racing/vault/vault/pkg/githubactions"
+	"github.com/gaucho-racing/vault/vault/pkg/kubernetes"
 	"github.com/gaucho-racing/vault/vault/pkg/logger"
 )
 
@@ -50,5 +51,13 @@ func Verify() {
 	if GitHubActionsOIDCAudience == "" {
 		GitHubActionsOIDCAudience = githubactions.DefaultAudience
 		logger.SugarLogger.Infof("GITHUB_ACTIONS_OIDC_AUDIENCE is not set, defaulting to %s", GitHubActionsOIDCAudience)
+	}
+	if KubernetesOIDCAudience == "" {
+		KubernetesOIDCAudience = kubernetes.DefaultAudience
+		logger.SugarLogger.Infof("KUBERNETES_OIDC_AUDIENCE is not set, defaulting to %s", KubernetesOIDCAudience)
+	}
+	if KubernetesClusterID == "" {
+		KubernetesClusterID = "default"
+		logger.SugarLogger.Infof("KUBERNETES_CLUSTER_ID is not set, defaulting to %s", KubernetesClusterID)
 	}
 }
