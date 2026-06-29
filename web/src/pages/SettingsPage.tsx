@@ -1,5 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Edit2, Monitor, Moon, Plus, Sun, Trash2, type LucideIcon } from "lucide-react"
+import {
+  Edit2,
+  Monitor,
+  Moon,
+  Plus,
+  Server,
+  ShieldCheck,
+  Sun,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react"
 import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
@@ -23,11 +33,24 @@ import { Textarea } from "@/components/ui/textarea"
 import { useTheme, type Theme } from "@/lib/theme"
 import {
   createGitHubActionsRule,
+  createKubernetesCluster,
+  createKubernetesSecretRule,
+  deleteKubernetesCluster,
   deleteGitHubActionsRule,
+  deleteKubernetesSecretRule,
   listGitHubActionsRules,
+  listKubernetesClusters,
+  listKubernetesSecretRules,
+  updateKubernetesCluster,
   updateGitHubActionsRule,
+  updateKubernetesSecretRule,
+  verifyKubernetesCluster,
   type GitHubActionsRule,
   type GitHubActionsRuleInput,
+  type KubernetesCluster,
+  type KubernetesClusterInput,
+  type KubernetesSecretRule,
+  type KubernetesSecretRuleInput,
 } from "@/lib/vault"
 
 const themeOptions: Array<{ value: Theme; label: string; Icon: LucideIcon }> = [
@@ -35,6 +58,8 @@ const themeOptions: Array<{ value: Theme; label: string; Icon: LucideIcon }> = [
   { value: "light", label: "Light", Icon: Sun },
   { value: "dark", label: "Dark", Icon: Moon },
 ]
+
+const defaultKubernetesAudience = "gaucho-racing-vault"
 
 function errorMessage(error: unknown, fallback: string) {
   return (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
@@ -194,11 +219,319 @@ function GitHubActionsRuleDialog({
   )
 }
 
+function KubernetesClusterDialog({
+  cluster,
+  trigger,
+  isPending,
+  isVerifying,
+  onSubmit,
+  onVerify,
+}: {
+  cluster?: KubernetesCluster
+  trigger: ReactNode
+  isPending: boolean
+  isVerifying: boolean
+  onSubmit: (input: KubernetesClusterInput) => Promise<unknown>
+  onVerify: (input: KubernetesClusterInput) => Promise<unknown>
+}) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(cluster?.name ?? "")
+  const [issuer, setIssuer] = useState(cluster?.issuer ?? "")
+  const [audience, setAudience] = useState(cluster?.audience ?? defaultKubernetesAudience)
+  const [enabled, setEnabled] = useState(cluster?.enabled ?? true)
+  const isEditing = !!cluster
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen)
+    if (nextOpen) return
+    setName(cluster?.name ?? "")
+    setIssuer(cluster?.issuer ?? "")
+    setAudience(cluster?.audience ?? defaultKubernetesAudience)
+    setEnabled(cluster?.enabled ?? true)
+  }
+
+  function clusterInput(): KubernetesClusterInput {
+    return {
+      name: normalizeIdentifier(name),
+      issuer: issuer.trim(),
+      audience: audience.trim() || defaultKubernetesAudience,
+      enabled,
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    await onSubmit(clusterInput())
+    handleOpenChange(false)
+  }
+
+  async function handleVerify() {
+    await onVerify(clusterInput())
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit Kubernetes cluster" : "New Kubernetes cluster"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+            <div className="space-y-2">
+              <Label htmlFor={isEditing ? `kubernetes-cluster-name-${cluster.id}` : "kubernetes-cluster-name"}>
+                Name
+              </Label>
+              <Input
+                id={isEditing ? `kubernetes-cluster-name-${cluster.id}` : "kubernetes-cluster-name"}
+                value={name}
+                onChange={(event) => setName(event.target.value.toLowerCase())}
+                placeholder="prod"
+                required
+              />
+            </div>
+            <label className="flex items-center justify-between gap-3 self-end rounded-lg bg-muted/40 px-3 py-2 text-sm dark:bg-muted/30">
+              <span className="font-medium">Enabled</span>
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(event) => setEnabled(event.target.checked)}
+                className="size-4 accent-gr-pink"
+              />
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={isEditing ? `kubernetes-cluster-issuer-${cluster.id}` : "kubernetes-cluster-issuer"}>
+              Issuer
+            </Label>
+            <Input
+              id={isEditing ? `kubernetes-cluster-issuer-${cluster.id}` : "kubernetes-cluster-issuer"}
+              value={issuer}
+              onChange={(event) => setIssuer(event.target.value)}
+              placeholder="https://oidc.eks.us-west-2.amazonaws.com/id/..."
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor={isEditing ? `kubernetes-cluster-audience-${cluster.id}` : "kubernetes-cluster-audience"}
+            >
+              Audience
+            </Label>
+            <Input
+              id={isEditing ? `kubernetes-cluster-audience-${cluster.id}` : "kubernetes-cluster-audience"}
+              value={audience}
+              onChange={(event) => setAudience(event.target.value)}
+              placeholder={defaultKubernetesAudience}
+              required
+            />
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleVerify}
+              disabled={isPending || isVerifying}
+            >
+              <ShieldCheck className="size-4" />
+              {isVerifying ? "Verifying" : "Verify"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Saving" : "Save"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function KubernetesSecretRuleDialog({
+  rule,
+  clusters,
+  trigger,
+  isPending,
+  onSubmit,
+}: {
+  rule?: KubernetesSecretRule
+  clusters: KubernetesCluster[]
+  trigger: ReactNode
+  isPending: boolean
+  onSubmit: (input: KubernetesSecretRuleInput) => Promise<unknown>
+}) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(rule?.name ?? "")
+  const [clusterIds, setClusterIds] = useState<string[]>(rule?.cluster_ids ?? [])
+  const [namespacePatterns, setNamespacePatterns] = useState(() => listText(rule?.namespace_patterns))
+  const [serviceAccountPatterns, setServiceAccountPatterns] = useState(() =>
+    listText(rule?.service_account_patterns),
+  )
+  const [secretSelectors, setSecretSelectors] = useState(() => listText(rule?.secret_selectors))
+  const [enabled, setEnabled] = useState(rule?.enabled ?? true)
+  const isEditing = !!rule
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen)
+    if (nextOpen) return
+    setName(rule?.name ?? "")
+    setClusterIds(rule?.cluster_ids ?? [])
+    setNamespacePatterns(listText(rule?.namespace_patterns))
+    setServiceAccountPatterns(listText(rule?.service_account_patterns))
+    setSecretSelectors(listText(rule?.secret_selectors))
+    setEnabled(rule?.enabled ?? true)
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    await onSubmit({
+      name: normalizeIdentifier(name),
+      cluster_ids: clusterIds,
+      namespace_patterns: normalizeList(namespacePatterns, true),
+      service_account_patterns: normalizeList(serviceAccountPatterns, true),
+      secret_selectors: normalizeList(secretSelectors, true),
+      enabled,
+    })
+    handleOpenChange(false)
+  }
+
+  function handleClusterChange(clusterID: string, checked: boolean) {
+    setClusterIds((current) =>
+      checked ? Array.from(new Set([...current, clusterID])) : current.filter((id) => id !== clusterID),
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit Kubernetes rule" : "New Kubernetes rule"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+            <div className="space-y-2">
+              <Label htmlFor={isEditing ? `kubernetes-rule-name-${rule.id}` : "kubernetes-rule-name"}>
+                Name
+              </Label>
+              <Input
+                id={isEditing ? `kubernetes-rule-name-${rule.id}` : "kubernetes-rule-name"}
+                value={name}
+                onChange={(event) => setName(event.target.value.toLowerCase())}
+                placeholder="production-sync"
+                required
+              />
+            </div>
+            <label className="flex items-center justify-between gap-3 self-end rounded-lg bg-muted/40 px-3 py-2 text-sm dark:bg-muted/30">
+              <span className="font-medium">Enabled</span>
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(event) => setEnabled(event.target.checked)}
+                className="size-4 accent-gr-pink"
+              />
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Clusters</Label>
+            <div className="grid gap-2 rounded-lg border border-border/55 p-2 sm:grid-cols-2">
+              {clusters.map((cluster) => (
+                <label
+                  key={cluster.id}
+                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/45"
+                >
+                  <input
+                    type="checkbox"
+                    checked={clusterIds.includes(cluster.id)}
+                    onChange={(event) => handleClusterChange(cluster.id, event.target.checked)}
+                    className="size-4 shrink-0 accent-gr-pink"
+                  />
+                  <span className="min-w-0 truncate font-mono">{cluster.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label
+                htmlFor={isEditing ? `kubernetes-rule-namespaces-${rule.id}` : "kubernetes-rule-namespaces"}
+              >
+                Namespaces
+              </Label>
+              <Textarea
+                id={isEditing ? `kubernetes-rule-namespaces-${rule.id}` : "kubernetes-rule-namespaces"}
+                value={namespacePatterns}
+                onChange={(event) => setNamespacePatterns(event.target.value)}
+                placeholder={"default\nmapache-*"}
+                className="min-h-28 font-mono"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor={
+                  isEditing
+                    ? `kubernetes-rule-service-accounts-${rule.id}`
+                    : "kubernetes-rule-service-accounts"
+                }
+              >
+                Service accounts
+              </Label>
+              <Textarea
+                id={
+                  isEditing
+                    ? `kubernetes-rule-service-accounts-${rule.id}`
+                    : "kubernetes-rule-service-accounts"
+                }
+                value={serviceAccountPatterns}
+                onChange={(event) => setServiceAccountPatterns(event.target.value)}
+                placeholder={"vault-sync\n*-deployer"}
+                className="min-h-28 font-mono"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={isEditing ? `kubernetes-rule-selectors-${rule.id}` : "kubernetes-rule-selectors"}>
+              Secret selectors
+            </Label>
+            <Textarea
+              id={isEditing ? `kubernetes-rule-selectors-${rule.id}` : "kubernetes-rule-selectors"}
+              value={secretSelectors}
+              onChange={(event) => setSecretSelectors(event.target.value)}
+              placeholder={"pypi.publish_token\nmapache-prod.*"}
+              className="min-h-28 font-mono"
+              required
+            />
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending || clusterIds.length === 0}>
+              {isPending ? "Saving" : "Save"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function PatternBadges({ values, variant = "outline" }: { values: string[]; variant?: "outline" | "secondary" }) {
   return (
     <div className="flex min-h-6 flex-wrap gap-1.5">
       {values.map((value) => (
-        <Badge key={value} variant={variant}>
+        <Badge key={value} variant={variant} className="max-w-full truncate" title={value}>
           {value}
         </Badge>
       ))}
@@ -213,6 +546,16 @@ export default function SettingsPage() {
   const rulesQuery = useQuery({
     queryKey: ["githubActionsRules"],
     queryFn: listGitHubActionsRules,
+  })
+
+  const kubernetesRulesQuery = useQuery({
+    queryKey: ["kubernetesSecretRules"],
+    queryFn: listKubernetesSecretRules,
+  })
+
+  const kubernetesClustersQuery = useQuery({
+    queryKey: ["kubernetesClusters"],
+    queryFn: listKubernetesClusters,
   })
 
   const createRuleMutation = useMutation({
@@ -243,7 +586,73 @@ export default function SettingsPage() {
     onError: (error) => toast.error(errorMessage(error, "Failed to delete GitHub Actions rule")),
   })
 
+  const createKubernetesClusterMutation = useMutation({
+    mutationFn: createKubernetesCluster,
+    onSuccess: () => {
+      toast.success("Kubernetes cluster created")
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesClusters"] })
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to create Kubernetes cluster")),
+  })
+
+  const updateKubernetesClusterMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: KubernetesClusterInput }) =>
+      updateKubernetesCluster(id, input),
+    onSuccess: () => {
+      toast.success("Kubernetes cluster updated")
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesClusters"] })
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to update Kubernetes cluster")),
+  })
+
+  const verifyKubernetesClusterMutation = useMutation({
+    mutationFn: verifyKubernetesCluster,
+    onSuccess: () => toast.success("Kubernetes cluster verified"),
+    onError: (error) => toast.error(errorMessage(error, "Failed to verify Kubernetes cluster")),
+  })
+
+  const deleteKubernetesClusterMutation = useMutation({
+    mutationFn: deleteKubernetesCluster,
+    onSuccess: () => {
+      toast.success("Kubernetes cluster deleted")
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesClusters"] })
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesSecretRules"] })
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to delete Kubernetes cluster")),
+  })
+
+  const createKubernetesRuleMutation = useMutation({
+    mutationFn: createKubernetesSecretRule,
+    onSuccess: () => {
+      toast.success("Kubernetes rule created")
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesSecretRules"] })
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to create Kubernetes rule")),
+  })
+
+  const updateKubernetesRuleMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: KubernetesSecretRuleInput }) =>
+      updateKubernetesSecretRule(id, input),
+    onSuccess: () => {
+      toast.success("Kubernetes rule updated")
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesSecretRules"] })
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to update Kubernetes rule")),
+  })
+
+  const deleteKubernetesRuleMutation = useMutation({
+    mutationFn: deleteKubernetesSecretRule,
+    onSuccess: () => {
+      toast.success("Kubernetes rule deleted")
+      void queryClient.invalidateQueries({ queryKey: ["kubernetesSecretRules"] })
+    },
+    onError: (error) => toast.error(errorMessage(error, "Failed to delete Kubernetes rule")),
+  })
+
   const rules = rulesQuery.data ?? []
+  const kubernetesClusters = kubernetesClustersQuery.data ?? []
+  const kubernetesRules = kubernetesRulesQuery.data ?? []
+  const kubernetesClustersByID = new Map(kubernetesClusters.map((cluster) => [cluster.id, cluster]))
 
   return (
     <PageContainer>
@@ -371,6 +780,240 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/50 pb-4">
+            <div>
+              <CardTitle>Kubernetes</CardTitle>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {kubernetesClusters.length} cluster{kubernetesClusters.length === 1 ? "" : "s"} /{" "}
+                {kubernetesRules.length} rule{kubernetesRules.length === 1 ? "" : "s"}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <KubernetesClusterDialog
+                isPending={createKubernetesClusterMutation.isPending}
+                isVerifying={verifyKubernetesClusterMutation.isPending}
+                onSubmit={(input) => createKubernetesClusterMutation.mutateAsync(input)}
+                onVerify={(input) => verifyKubernetesClusterMutation.mutateAsync(input)}
+                trigger={
+                  <Button size="sm" variant="secondary">
+                    <Plus className="size-4" />
+                    Cluster
+                  </Button>
+                }
+              />
+              <KubernetesSecretRuleDialog
+                clusters={kubernetesClusters}
+                isPending={createKubernetesRuleMutation.isPending}
+                onSubmit={(input) => createKubernetesRuleMutation.mutateAsync(input)}
+                trigger={
+                  <Button size="sm" disabled={kubernetesClusters.length === 0}>
+                    <Plus className="size-4" />
+                    Rule
+                  </Button>
+                }
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="border-b border-border/50">
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="text-sm font-medium">Clusters</div>
+                <div className="text-xs text-muted-foreground">
+                  {kubernetesClusters.length} configured
+                </div>
+              </div>
+              {kubernetesClustersQuery.isLoading ? (
+                <div className="space-y-3 px-4 pb-4">
+                  <Skeleton className="h-20 rounded-lg" />
+                  <Skeleton className="h-20 rounded-lg" />
+                </div>
+              ) : kubernetesClusters.length === 0 ? (
+                <div className="flex min-h-36 flex-col items-center justify-center px-4 py-8 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                    <Server className="size-5 text-muted-foreground" />
+                  </div>
+                  <div className="mt-4 text-sm font-medium">No Kubernetes clusters</div>
+                </div>
+              ) : (
+                <div>
+                  {kubernetesClusters.map((cluster) => (
+                    <div
+                      key={cluster.id}
+                      className="grid gap-4 border-t border-border/45 px-4 py-4 xl:grid-cols-[minmax(180px,0.7fr)_minmax(320px,1.3fr)_minmax(180px,0.7fr)_92px] xl:items-start"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                            <Server className="size-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-mono text-sm font-medium">{cluster.name}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {cluster.enabled ? "Enabled" : "Disabled"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground">Issuer</div>
+                        <div className="truncate font-mono text-sm" title={cluster.issuer}>
+                          {cluster.issuer}
+                        </div>
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground">Audience</div>
+                        <div className="truncate font-mono text-sm" title={cluster.audience}>
+                          {cluster.audience}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 xl:justify-end">
+                        <KubernetesClusterDialog
+                          cluster={cluster}
+                          isPending={updateKubernetesClusterMutation.isPending}
+                          isVerifying={verifyKubernetesClusterMutation.isPending}
+                          onSubmit={(input) =>
+                            updateKubernetesClusterMutation.mutateAsync({ id: cluster.id, input })
+                          }
+                          onVerify={(input) => verifyKubernetesClusterMutation.mutateAsync(input)}
+                          trigger={
+                            <Button variant="ghost" size="icon-sm">
+                              <Edit2 className="size-3.5" />
+                              <span className="sr-only">Edit Kubernetes cluster</span>
+                            </Button>
+                          }
+                        />
+                        <ConfirmDialog
+                          title="Delete Kubernetes cluster"
+                          description="This will remove this Kubernetes cluster config."
+                          confirmLabel="Delete cluster"
+                          isPending={deleteKubernetesClusterMutation.isPending}
+                          onConfirm={() => deleteKubernetesClusterMutation.mutateAsync(cluster.id)}
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={deleteKubernetesClusterMutation.isPending}
+                            >
+                              <Trash2 className="size-3.5" />
+                              <span className="sr-only">Delete Kubernetes cluster</span>
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="text-sm font-medium">Access rules</div>
+                <div className="text-xs text-muted-foreground">
+                  {kubernetesRules.length} configured
+                </div>
+              </div>
+              {kubernetesRulesQuery.isLoading ? (
+                <div className="space-y-3 px-4 pb-4">
+                  <Skeleton className="h-24 rounded-lg" />
+                  <Skeleton className="h-24 rounded-lg" />
+                </div>
+              ) : kubernetesRules.length === 0 ? (
+                <div className="flex min-h-36 flex-col items-center justify-center px-4 py-8 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                    <Server className="size-5 text-muted-foreground" />
+                  </div>
+                  <div className="mt-4 text-sm font-medium">No Kubernetes rules</div>
+                </div>
+              ) : (
+                <div>
+                  {kubernetesRules.map((rule) => {
+                    const linkedClusters = rule.cluster_ids.map((id) => kubernetesClustersByID.get(id)?.name ?? id)
+                    return (
+                      <div
+                        key={rule.id}
+                        className="grid gap-4 border-t border-border/45 px-4 py-4 xl:grid-cols-[minmax(180px,0.75fr)_minmax(180px,0.9fr)_minmax(160px,0.9fr)_minmax(190px,1fr)_minmax(220px,1.1fr)_92px] xl:items-start"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                              <Server className="size-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate font-mono text-sm font-medium">{rule.name}</div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {rule.enabled ? "Enabled" : "Disabled"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            {patternSummary(linkedClusters, "cluster")}
+                          </div>
+                          <PatternBadges values={linkedClusters} />
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            {patternSummary(rule.namespace_patterns, "namespace")}
+                          </div>
+                          <PatternBadges values={rule.namespace_patterns} />
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            {patternSummary(rule.service_account_patterns, "service account")}
+                          </div>
+                          <PatternBadges values={rule.service_account_patterns} />
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            {patternSummary(rule.secret_selectors, "selector")}
+                          </div>
+                          <PatternBadges values={rule.secret_selectors} variant="secondary" />
+                        </div>
+                        <div className="flex gap-1 xl:justify-end">
+                          <KubernetesSecretRuleDialog
+                            rule={rule}
+                            clusters={kubernetesClusters}
+                            isPending={updateKubernetesRuleMutation.isPending}
+                            onSubmit={(input) =>
+                              updateKubernetesRuleMutation.mutateAsync({ id: rule.id, input })
+                            }
+                            trigger={
+                              <Button variant="ghost" size="icon-sm">
+                                <Edit2 className="size-3.5" />
+                                <span className="sr-only">Edit Kubernetes rule</span>
+                              </Button>
+                            }
+                          />
+                          <ConfirmDialog
+                            title="Delete Kubernetes rule"
+                            description="This will remove this Kubernetes access rule."
+                            confirmLabel="Delete rule"
+                            isPending={deleteKubernetesRuleMutation.isPending}
+                            onConfirm={() => deleteKubernetesRuleMutation.mutateAsync(rule.id)}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={deleteKubernetesRuleMutation.isPending}
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span className="sr-only">Delete Kubernetes rule</span>
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
