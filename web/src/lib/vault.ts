@@ -147,6 +147,29 @@ export type GitHubActionsRuleInput = {
   enabled: boolean
 }
 
+export type KubernetesSecretRule = {
+  id: string
+  name: string
+  cluster_patterns: string[]
+  namespace_patterns: string[]
+  service_account_patterns: string[]
+  secret_selectors: string[]
+  enabled: boolean
+  created_by_entity_id: string
+  updated_by_entity_id: string
+  created_at: string
+  updated_at: string
+}
+
+export type KubernetesSecretRuleInput = {
+  name: string
+  cluster_patterns: string[]
+  namespace_patterns: string[]
+  service_account_patterns: string[]
+  secret_selectors: string[]
+  enabled: boolean
+}
+
 export type SentinelGroup = {
   id: string
   name: string
@@ -196,6 +219,13 @@ type GitHubActionsRuleResponseFields = {
   secret_selectors?: string[] | null
 }
 
+type KubernetesSecretRuleResponseFields = {
+  cluster_patterns?: string[] | null
+  namespace_patterns?: string[] | null
+  service_account_patterns?: string[] | null
+  secret_selectors?: string[] | null
+}
+
 function normalizeStringArray(value: string[] | null | undefined) {
   return Array.isArray(value) ? value : []
 }
@@ -212,6 +242,16 @@ function normalizeGitHubActionsRule<T extends GitHubActionsRuleResponseFields>(r
     ...rule,
     repository_patterns: normalizeStringArray(rule.repository_patterns),
     ref_patterns: normalizeStringArray(rule.ref_patterns),
+    secret_selectors: normalizeStringArray(rule.secret_selectors),
+  }
+}
+
+function normalizeKubernetesSecretRule<T extends KubernetesSecretRuleResponseFields>(rule: T) {
+  return {
+    ...rule,
+    cluster_patterns: normalizeStringArray(rule.cluster_patterns),
+    namespace_patterns: normalizeStringArray(rule.namespace_patterns),
+    service_account_patterns: normalizeStringArray(rule.service_account_patterns),
     secret_selectors: normalizeStringArray(rule.secret_selectors),
   }
 }
@@ -262,6 +302,25 @@ export async function updateGitHubActionsRule(id: string, input: GitHubActionsRu
 
 export async function deleteGitHubActionsRule(id: string) {
   await api.delete(`/integrations/github/actions/rules/${id}`)
+}
+
+export async function listKubernetesSecretRules() {
+  const response = await api.get<KubernetesSecretRule[]>("/integrations/kubernetes/rules")
+  return response.data.map(normalizeKubernetesSecretRule)
+}
+
+export async function createKubernetesSecretRule(input: KubernetesSecretRuleInput) {
+  const response = await api.post<KubernetesSecretRule>("/integrations/kubernetes/rules", input)
+  return normalizeKubernetesSecretRule(response.data)
+}
+
+export async function updateKubernetesSecretRule(id: string, input: KubernetesSecretRuleInput) {
+  const response = await api.put<KubernetesSecretRule>(`/integrations/kubernetes/rules/${id}`, input)
+  return normalizeKubernetesSecretRule(response.data)
+}
+
+export async function deleteKubernetesSecretRule(id: string) {
+  await api.delete(`/integrations/kubernetes/rules/${id}`)
 }
 
 export async function createAppSecret(applicationID: string, input: AppSecretInput) {
