@@ -118,6 +118,8 @@ jobs:
               emit_commits -20 "$NEW_TAG"
             fi
             echo
+            echo "**[Click here to view all changes →](https://github.com/${VAULT_REPO}/compare/${OLD_TAG}...${NEW_TAG})**"
+            echo
             echo "---"
             echo "_Opened automatically by the \`deploy\` workflow on release ${NEW_TAG}._"
           } > "$RUNNER_TEMP/pr-body.md"
