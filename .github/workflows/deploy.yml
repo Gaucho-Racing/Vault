@@ -14,7 +14,7 @@ on:
 
 env:
   INFRA_REPO: Gaucho-Racing/infrastructure
-  KUSTOMIZATION: infra/kubernetes/manifests/vault/kustomization.yaml
+  KUSTOMIZATION: infra/kubernetes/gr-foundry/manifests/vault/kustomization.yaml
   SERVICES: "server web"
 
 jobs:
@@ -74,7 +74,7 @@ jobs:
             { print }
           ' "$KUSTOMIZATION" > "$KUSTOMIZATION.tmp" && mv "$KUSTOMIZATION.tmp" "$KUSTOMIZATION"
           echo "--- diff ---"
-          git -C infra diff -- kubernetes/manifests/vault/kustomization.yaml
+          git -C infra diff -- kubernetes/gr-foundry/manifests/vault/kustomization.yaml
 
       - name: Build changelog
         if: steps.versions.outputs.skip == 'false'
@@ -134,8 +134,13 @@ jobs:
           RELEASE_AUTHOR: ${{ github.event.release.author.login }}
         run: |
           BRANCH="bot/bump-vault-${NEW}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Attribute the commit to the gauchoracing service account (matches
+          # the PAT this job uses) so both the commit and the PR opener show
+          # as @gauchoracing in the infra repo, not github-actions[bot].
+          # team@gauchoracing.com is verified on the account, so GitHub
+          # links the commit to @gauchoracing automatically.
+          git config user.name "GR Admin"
+          git config user.email "team@gauchoracing.com"
           git switch -C "$BRANCH"
           git commit -am "Deploy: vault to ${NEW_TAG} (${SHORT_SHA})"
           git push -f -u origin "$BRANCH"
