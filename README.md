@@ -7,8 +7,8 @@
 Vault is Gaucho Racing's internal secrets manager for shared credentials, application secrets, and workflow automation secrets.
 It provides a Sentinel-backed web interface for storing account credentials, TOTP seeds, notes, API keys, and app-scoped secrets with group-based access controls.
 
-Vault also powers GitHub Actions secret delivery through OIDC.
-Repositories can request explicit app-secret selectors, while Vault centrally evaluates repository, ref, and selector rules before exporting secrets into the workflow environment.
+Vault also powers secret delivery to GitHub Actions and Kubernetes clusters through OIDC.
+Callers request explicit app-secret selectors, and Vault evaluates its rules against the caller identity — repository/ref for Actions, cluster/namespace/service account for Kubernetes — before returning any values.
 
 Production: [vault.gauchoracing.com](https://vault.gauchoracing.com)
 
@@ -18,6 +18,7 @@ Production: [vault.gauchoracing.com](https://vault.gauchoracing.com)
 - Encrypted account secrets for passwords, TOTP seeds, API keys, URLs, notes, and custom secret types.
 - App secrets referenced by selectors such as `mapache-prod.sentinel_client_id`.
 - GitHub Actions OIDC rules for exporting selected app secrets to trusted workflows.
+- Kubernetes OIDC rules for materializing app secrets into cluster `Secret` resources via [vault-k8s-operator](https://github.com/Gaucho-Racing/vault-k8s-operator).
 - Audit logs for account and secret views, with duplicate view events debounced.
 - Multi-architecture server and web images published to GitHub Container Registry.
 
@@ -91,12 +92,37 @@ jobs:
           secrets: pypi.publish_token
 ```
 
+## Kubernetes Secrets
+
+Vault exposes a Kubernetes OIDC export endpoint that materializes app secrets into cluster `Secret` resources.
+Register a cluster and a matching rule from Vault settings, then let the [vault-k8s-operator](https://github.com/Gaucho-Racing/vault-k8s-operator) reconcile secrets into workloads.
+
+Example `VaultSecretSync`:
+
+```yaml
+apiVersion: vault.gauchoracing.com/v1alpha1
+kind: VaultSecretSync
+metadata:
+  name: sentinel-secrets
+  namespace: sentinel
+spec:
+  serviceAccountName: default
+  target:
+    name: sentinel-secrets
+  rolloutTargets:
+    - kind: Deployment
+      name: core
+  secrets:
+    DATABASE_PASSWORD: gr-postgres.database_password
+    DISCORD_TOKEN: sentinel-prod.discord_token
+```
+
 ## Release
 
 Create a new Vault release from an up-to-date `main` branch:
 
 ```bash
-scripts/release.sh 1.4.0
+scripts/release.sh 1.5.2
 ```
 
 The release workflow publishes versioned `vault-server` and `vault-web` images, then opens an infrastructure PR to deploy the new image tags.
@@ -105,6 +131,7 @@ The release workflow publishes versioned `vault-server` and `vault-web` images, 
 
 - [Sentinel](https://github.com/Gaucho-Racing/Sentinel): authentication and access management
 - [Vault Pull Secrets](https://github.com/Gaucho-Racing/vault-pull-secrets): GitHub Action for exporting Vault app secrets
+- [Vault K8s Operator](https://github.com/Gaucho-Racing/vault-k8s-operator): Kubernetes operator that syncs Vault app secrets into cluster `Secret` resources
 
 ## Contributing
 
