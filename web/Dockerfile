@@ -8,7 +8,7 @@ RUN npm ci
 COPY . ./
 
 ARG VITE_API_URL=""
-ARG VITE_SENTINEL_URL="https://sentinel-v5.gauchoracing.com"
+ARG VITE_SENTINEL_URL="https://sso.gauchoracing.com"
 ARG VITE_SENTINEL_CLIENT_ID="Ehf9Nl8SVs9w"
 
 ENV VITE_API_URL=$VITE_API_URL
