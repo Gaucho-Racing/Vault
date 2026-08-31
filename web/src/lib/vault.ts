@@ -46,13 +46,17 @@ export type TOTPRegistration = {
 }
 
 export type AuditActor = {
-  user_id: string
-  entity_id: string
-  username: string
-  first_name: string
-  last_name: string
-  email: string
-  avatar_url: string
+  id: string
+  type: "USER" | "SERVICE_ACCOUNT"
+  name: string
+  username?: string
+  avatar_url?: string
+  application?: {
+    id: string
+    name: string
+    client_id: string
+    icon_url: string
+  }
 }
 
 export type AuditLog = {

@@ -118,12 +118,10 @@ function auditActionLabel(action: string) {
 
 function auditActorName(auditLog: AuditLog) {
   const actor = auditLog.actor
-  if (!actor) return auditLog.actor_user_id || auditLog.actor_entity_id || "Unknown actor"
+  if (!actor) return auditLog.actor_entity_id || auditLog.actor_user_id || "Unknown actor"
   return (
-    [actor.first_name, actor.last_name].filter(Boolean).join(" ") ||
+    actor.name ||
     actor.username ||
-    actor.email ||
-    actor.user_id ||
     auditLog.actor_entity_id ||
     "Unknown actor"
   )
@@ -132,11 +130,10 @@ function auditActorName(auditLog: AuditLog) {
 function auditActorInitials(auditLog: AuditLog) {
   const actor = auditLog.actor
   const source =
-    [actor?.first_name, actor?.last_name].filter(Boolean).join(" ") ||
+    actor?.name ||
     actor?.username ||
-    actor?.email ||
-    auditLog.actor_user_id ||
-    auditLog.actor_entity_id
+    auditLog.actor_entity_id ||
+    auditLog.actor_user_id
   const initials = source
     .split(/\s+/)
     .filter(Boolean)
