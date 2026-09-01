@@ -2,6 +2,7 @@ package sentinel
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -56,6 +57,22 @@ type User struct {
 	Groups                []string `json:"groups"`
 	UpdatedAt             string   `json:"updated_at"`
 	CreatedAt             string   `json:"created_at"`
+}
+
+type IdentityApplicationSummary struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	ClientID string `json:"client_id"`
+	IconURL  string `json:"icon_url"`
+}
+
+type IdentitySummary struct {
+	ID          string                      `json:"id"`
+	Type        string                      `json:"type"`
+	Name        string                      `json:"name"`
+	Username    string                      `json:"username,omitempty"`
+	AvatarURL   string                      `json:"avatar_url,omitempty"`
+	Application *IdentityApplicationSummary `json:"application,omitempty"`
 }
 
 type Group struct {
@@ -170,6 +187,59 @@ func GetCurrentUser(accessToken string, userID string) (User, error) {
 		return User{}, err
 	}
 	return user, nil
+}
+
+func ResolveIdentities(ctx context.Context, accessToken string, entityIDs []string) ([]IdentitySummary, error) {
+	if len(entityIDs) == 0 {
+		return []IdentitySummary{}, nil
+	}
+	if strings.TrimSpace(config.SentinelURL) == "" {
+		return nil, fmt.Errorf("SENTINEL_URL is not configured")
+	}
+	if strings.TrimSpace(accessToken) == "" {
+		return nil, fmt.Errorf("access token is required")
+	}
+
+	body, err := json.Marshal(map[string][]string{"ids": entityIDs})
+	if err != nil {
+		return nil, fmt.Errorf("encode identity summary request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		strings.TrimRight(config.SentinelURL, "/")+"/api/entities/resolve",
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		var sentinelErr Error
+		if err := json.Unmarshal(respBody, &sentinelErr); err == nil && sentinelErr.Message != "" {
+			sentinelErr.Code = resp.StatusCode
+			return nil, sentinelErr
+		}
+		return nil, Error{Code: resp.StatusCode, Message: strings.TrimSpace(string(respBody))}
+	}
+
+	summaries := []IdentitySummary{}
+	if err := json.Unmarshal(respBody, &summaries); err != nil {
+		return nil, err
+	}
+	return summaries, nil
 }
 
 func GetGroups(accessToken string) ([]Group, error) {

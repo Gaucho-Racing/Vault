@@ -16,19 +16,9 @@ import (
 
 const auditViewDebounceWindow = 2 * time.Minute
 
-type auditActorResponse struct {
-	UserID    string `json:"user_id"`
-	EntityID  string `json:"entity_id"`
-	Username  string `json:"username"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
-}
-
 type auditLogResponse struct {
 	model.AuditLog
-	Actor *auditActorResponse `json:"actor,omitempty"`
+	Actor *sentinel.IdentitySummary `json:"actor,omitempty"`
 }
 
 func ListAccountAuditLogs(c *gin.Context) {
@@ -90,37 +80,35 @@ func newSecretAuditLog(c *gin.Context, action string, account model.Account, sec
 }
 
 func buildAuditLogResponses(c *gin.Context, auditLogs []model.AuditLog) []auditLogResponse {
-	actorsByUserID := make(map[string]auditActorResponse)
+	entityIDs := make([]string, 0, len(auditLogs))
+	seenEntityIDs := make(map[string]struct{}, len(auditLogs))
 	for _, auditLog := range auditLogs {
-		if auditLog.ActorUserID == "" {
+		if auditLog.ActorEntityID == "" {
 			continue
 		}
-		if _, exists := actorsByUserID[auditLog.ActorUserID]; exists {
+		if _, exists := seenEntityIDs[auditLog.ActorEntityID]; exists {
 			continue
 		}
-		user, err := sentinel.GetCurrentUser(GetRequestToken(c), auditLog.ActorUserID)
-		if err != nil {
-			logger.SugarLogger.Warnf("failed to hydrate audit actor user %s: %v", auditLog.ActorUserID, err)
-			continue
-		}
-		actorsByUserID[auditLog.ActorUserID] = auditActorResponse{
-			UserID:    user.ID,
-			EntityID:  user.EntityID,
-			Username:  user.Username,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			Email:     user.Email,
-			AvatarURL: user.AvatarURL,
+		seenEntityIDs[auditLog.ActorEntityID] = struct{}{}
+		entityIDs = append(entityIDs, auditLog.ActorEntityID)
+	}
+
+	actorsByEntityID := make(map[string]*sentinel.IdentitySummary, len(entityIDs))
+	actors, err := sentinel.ResolveIdentities(c.Request.Context(), GetRequestToken(c), entityIDs)
+	if err != nil {
+		logger.SugarLogger.Warnf("failed to hydrate audit actors: %v", err)
+	} else {
+		for index := range actors {
+			actorsByEntityID[actors[index].ID] = &actors[index]
 		}
 	}
 
 	responses := make([]auditLogResponse, 0, len(auditLogs))
 	for _, auditLog := range auditLogs {
-		response := auditLogResponse{AuditLog: auditLog}
-		if actor, exists := actorsByUserID[auditLog.ActorUserID]; exists {
-			response.Actor = &actor
-		}
-		responses = append(responses, response)
+		responses = append(responses, auditLogResponse{
+			AuditLog: auditLog,
+			Actor:    actorsByEntityID[auditLog.ActorEntityID],
+		})
 	}
 	return responses
 }
