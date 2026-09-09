@@ -117,6 +117,10 @@ func AuthChecker() gin.HandlerFunc {
 				return
 			}
 			setAuthContext(c, token, claims)
+			if !RequestTokenHasAudience(c, config.SentinelClientID) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token is not intended for Vault"})
+				return
+			}
 			logger.SugarLogger.Infof("Decoded token: entity=%s audience=%s scope=%s", GetRequestTokenEntityID(c), GetRequestTokenAudience(c), GetRequestTokenScopes(c))
 		}
 		c.Next()
@@ -176,15 +180,6 @@ func RequestTokenExists(c *gin.Context) bool {
 	return exists
 }
 
-func RequestTokenHasScope(c *gin.Context, scope string) bool {
-	for _, tokenScope := range strings.Fields(GetRequestTokenScopes(c)) {
-		if tokenScope == scope {
-			return true
-		}
-	}
-	return false
-}
-
 func RequestTokenHasAudience(c *gin.Context, audience string) bool {
 	return GetRequestTokenAudience(c) == audience
 }
@@ -215,9 +210,6 @@ func RequestTokenCanAccessAccount(c *gin.Context, account model.Account) bool {
 	if !RequestTokenExists(c) {
 		return false
 	}
-	if RequestTokenHasScope(c, "sentinel:all") {
-		return true
-	}
 	if RequestTokenHasGroupName(c, "Admins") {
 		return true
 	}
@@ -231,9 +223,6 @@ func RequestTokenCanAccessApplication(c *gin.Context, application model.Applicat
 	if !RequestTokenExists(c) {
 		return false
 	}
-	if RequestTokenHasScope(c, "sentinel:all") {
-		return true
-	}
 	if RequestTokenHasGroupName(c, "Admins") {
 		return true
 	}
@@ -244,11 +233,11 @@ func RequestTokenCanAccessApplication(c *gin.Context, application model.Applicat
 }
 
 func RequestTokenCanViewAuditLogs(c *gin.Context) bool {
-	return RequestTokenHasScope(c, "sentinel:all") || RequestTokenHasGroupName(c, "Admins")
+	return RequestTokenHasGroupName(c, "Admins")
 }
 
 func RequestTokenCanManageSettings(c *gin.Context) bool {
-	return RequestTokenHasScope(c, "sentinel:all") || RequestTokenHasGroupName(c, "Admins")
+	return RequestTokenHasGroupName(c, "Admins")
 }
 
 func RequestTokenCanManageGitHubActionsRules(c *gin.Context) bool {
