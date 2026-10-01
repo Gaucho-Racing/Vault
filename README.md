@@ -140,3 +140,7 @@ The release workflow publishes versioned `vault-server` and `vault-web` images, 
 3. Commit your changes (`git commit -m 'Add my amazing feature'`).
 4. Push to the branch (`git push origin gh-username/my-amazing-feature`).
 5. Open a pull request.
+
+## License
+
+Distributed under the MIT License. See `LICENSE.txt` for more information.
